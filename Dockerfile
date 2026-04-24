@@ -24,7 +24,7 @@ RUN npm install
 COPY . .
 
 # Build the Next.js application
-RUN npm run build
+RUN NEXT_PUBLIC_SUPABASE_URL="https://placeholder.supabase.co" NEXT_PUBLIC_SUPABASE_ANON_KEY="placeholder" npm run build
 
 # Expose port 3000
 EXPOSE 3000
