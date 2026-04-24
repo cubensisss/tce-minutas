@@ -1,0 +1,14 @@
+{
+  "processo": {
+    "numero": "24100654-5",
+    "relator": "Conselheiro Rodrigo Novaes",
+    "modalidade": "Auditoria Especial",
+    "exercicio": "2022",
+    "unidade_jurisdicionada": "Prefeitura de Inajá",
+    "interessados": "Fulano de Tal",
+    "descricao_objeto": "Objeto de teste"
+  },
+  "ementa": "EMENTA DE TESTE",
+  "analise_completa": "VOTO DE TESTE\n### Titulo\nConteudo da analise",
+  "decisao_voto": "CONSIDERANDO teste\nI. Decisao"
+}

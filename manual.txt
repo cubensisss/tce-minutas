@@ -1,0 +1,159 @@
+ 
+
+PROCESSO TCE-PE N° 24100654-5
+RELATOR: CONSELHEIRO RODRIGO NOVAES
+MODALIDADE - TIPO:Auditoria Especial - Conformidade -  2022 e 2023
+UNIDADE(S) JURISDICIONADA(S): Prefeitura Municipal de Inajá
+
+INTERESSADOS: 
+
+R01 - Leônidas Torres de Melo (Presidente de Comissão Permanente de Licitação)
+R02 - Antônio Barbosa de Vieira (Membro de Comissão Permanente de Licitação)
+R03 - Neyla Tatyanna Amaro Alencar (Assessora Jurídica)
+R04 - Marcelo Machado Freire (Prefeito)
+R05 - Silvia Micaely Lima Freire
+
+
+AUDITORIA ESPECIAL. 
+1. A . 
+
+
+
+Examinar os procedimentos de licitação n° 07/2022 - Convite n° 03/2022, n° 01/2023 - Convite n° 01/2023, n° 004/2023 - Pregão Eletrônico n° 001/2023 e dos procedimentos de contratação por dispensa n° 01/2023 (PL 07/2023) e n° 02/2023 (PL 020-2023), todos para fornecimento de estruturas para montagem de eventos artísticos, a fim de averiguar se os procedimentos atenderam as normas legais vigentes, analisar a execução desses contratos e verificar a regularidade dos processos de pagamento.
+
+
+Conforme apurado no relatório de auditoria, o Município de Inajá teve uma Receita Corrente de R$ 107.799.710,66 em 2023, sendo que executou quase R$ 5,7 milhões em despesas com festividades ao longo do ano, ou seja, aproximadamente 5,2% da receita corrente anual, tendo o Fundo de Participação dos Municípios (FPM) como principal fonte de recursos. O demonstrativo da dívida flutuante de 2023 aponta que o Município inscreveu em Restos a Pagar processados o montante de R$ 4,5 milhões, com estoque total de dívida flutuante superior a R$ 10,7 milhões e da Dívida Fundada superior a R$ 2,3 milhões.
+
+Dentre outros documentos que integram os autos, destacam-se:
+O Relatório de Auditoria (doc. 19);
+As notificações da interessadas (docs. 20 a 35);
+Defesas apresentadas (doc. 39)
+
+Após carrear aos autos vasta documentação, a auditoria emitiu, em 29/05/2025, o relatório apontando a ocorrência de algumas irregularidades.
+
+Vieram-me os autos para julgamento.
+
+É o relatório.
+
+2.1.1: Descumprimento do prazo legal de cinco dias úteis, previsto para licitações na modalidade convite n. 3/2022
+A equipe técnica apontou que entre a publicação do aviso do Convite n.º 03/2022, em 17/05/2022, e a data da sessão de julgamento, em 23/05/2022, transcorreram apenas quatro dias úteis, em violação ao prazo mínimo de cinco dias úteis estabelecido pelo artigo 21, § 2º, IV, da Lei Federal nº 8.666/93. Tal fato, segundo a auditoria, restringiu a ampla participação de interessados.
+Alegações da Defesa: 
+Os defendentes argumentam que a sessão do dia 23/05/2022 se tratava de uma "2ª Convocação", pois a primeira, em 17/05/2022, restou deserta. Sustentam que, por não ter havido alteração no edital, a recontagem do prazo seria dispensada, conforme o § 4º do artigo 21 da Lei nº 8.666/93. Citam jurisprudência do TCU para reforçar que a reabertura de prazo só é exigida quando a modificação afeta a formulação das propostas.
+Análise do Relator:
+Compulsando os autos, verifico que a unidade técnica apontou a inobservância do interstício mínimo para a modalidade Convite, insculpido no art. 21, § 2º, IV, da Lei Federal nº 8.666/93. Segundo o corpo instrutivo, a publicação ocorrida em 17/05/2022 e a abertura do certame em 23/05/2022 resultaram em um lapso de apenas quatro dias úteis, o que, em tese, comprometeria a competitividade e a isonomia do procedimento licitatório.
+No tocante à tese defensiva, os jurisdicionados sustentam que a sessão hostilizada configurava, em verdade, uma segunda convocação decorrente de certame anterior restado deserto. Argumentam, sob o pálio do art. 21, § 4º, da Lei Geral de Licitações, que a manutenção integral das condições do edital dispensaria a renovação do prazo legal.
+Contudo, cumpre proceder a uma distinção técnica necessária. O dispositivo invocado pela defesa refere-se estritamente às modificações no instrumento convocatório. No caso de reiteração de licitação deserta, embora o edital permaneça hígido em seu conteúdo, o ato de convocação é renovado, o que exige o respeito ao quantum temporal mínimo para que novos interessados possam se organizar e apresentar suas propostas. A supressão de 20% do prazo legal (um dia útil em cinco) configura, sob a ótica estritamente formal, uma irregularidade.
+Todavia, considerando que as irregularidades dos achados subsequentes advindas da celebração desse contrato foram mantidas, suponho que a redução pontual do prazo tenha sido orquestrada para direcionar o objeto. A redução do prazo, somada ao fracionamento da despesa, robustece a convicção de que houve um direcionamento deliberado para restringir a competição e contratar empresa específica, transformando o que seria uma falha formal em uma irregularidade material que contribuiu para frustrar os objetivos da licitação. A irregularidade, portanto, se mantém.
+
+2.1.2. Termo aditivo celebrado com alteração indevida do objeto da licitação como burla à modalidade determinada na lei - Convite n. 3/2022
+A auditoria constatou que o contrato original, destinado à festividade de Santo Antônio, foi aditivado para incluir a "Missa do Vaqueiro", um evento distinto e previsível. Essa alteração elevou o valor do contrato de R$ 324.128,00 para R$ 405.072,00, ultrapassando o limite de R$ 330.000,00 para a modalidade Convite, o que sugere uma burla para evitar a realização de uma Tomada de Preços.
+Alegações da Defesa:
+A defesa alega que o limite da modalidade licitatória se aplica ao valor estimado da contratação, e não ao valor final após aditivos, conforme o artigo 23 da Lei nº 8.666/93. Argumenta que o acréscimo obedeceu ao limite de 25% previsto no artigo 65, § 1º, da mesma lei, e que a medida foi adotada por "economia processual", já que o objeto (locação de estrutura) era o mesmo.
+Análise do Relator:
+Compulsando os autos, verifico que a equipe técnica apontou uma irregularidade de natureza grave no Contrato decorrente do Convite n.º 03/2022. Segundo a auditoria, a celebração de termo aditivo para a inclusão da "Missa do Vaqueiro" — evento distinto do objeto original ("Festividade de Santo Antônio") e de previsibilidade inerente ao calendário cultural do município — elevou o quantum contratual de R$ 324.128,00 para R$ 405.072,00. Tal majoração não apenas desnaturalizou o objeto licitado, como também ultrapassou o teto legal de R$ 330.000,00 estabelecido para a modalidade “Convite”, o que configuraria, em tese, burla ao dever de licitar mediante Tomada de Preços.
+No que tange à materialidade fática, os dados extraídos do processo confirmam que o aditamento representou um acréscimo de quase 25% sobre o valor original. Embora o limite percentual de alterações quantitativas esteja, em tese, amparado pelo art. 65, § 1º, da Lei Federal nº 8.666/93, a falha reside na indevida escolha da modalidade. 
+A jurisprudência consolidada desta Corte e do Tribunal de Contas da União é pacífica no sentido de que o enquadramento da modalidade licitatória deve considerar o valor total da despesa previsível para objetos de mesma natureza. Ao aditivar um evento previsível que projeta o valor final para patamar afeto à Tomada de Preços, a Administração mitigou o rigor competitivo e a publicidade exigidos para certames de maior vulto. A economia processual não pode servir de pretexto para o descumprimento de normas cogentes que visam garantir a lisura e a competitividade dos certames.
+Sob a ótica da responsabilização, cumpre destacar que a alegação de respaldo em pareceres jurídicos ou consultorias externas não socorre os gestores. A assinatura do aditivo sem a observância do limite da modalidade configura culpa in vigilando e erro grosseiro, uma vez que a segregação de eventos previsíveis (e previamente publicizada em redes sociais, como apontado pela auditoria) em um mesmo contrato, forçando a manutenção de modalidade simplificada, fere o princípio da moralidade e da seleção da proposta mais vantajosa.
+Assim, julgo pela irregularidade do ato de aditamento, com aplicação de multa aos responsáveis, fundamentada na violação frontal aos limites do art. 23 da Lei nº 8.666/93, servindo a presente decisão como medida pedagógica para que o planejamento das festividades anuais contemple a totalidade dos eventos em modalidade compatível com o somatório das despesas.
+
+2.1.3: Termo de referência com quantitativos inconsistentes com o objeto da licitação, dando causa a pagamentos indevidos - Convite n.º 03/2022
+A auditoria apontou o pagamento por 13 diárias de palco e som e 16 diárias de geradores e camarins, quando o evento de Santo Antônio teve duração de 12 dias. O excesso contratado e pago totalizou R$ 38.720,00.
+Alegações da Defesa:
+A defesa justifica os quantitativos excedentes afirmando que, em determinadas datas, foram utilizados dois palcos e dois sistemas de som simultaneamente, bem como mais de uma unidade de gerador e camarim.
+Análise do Relator:
+Ainda sobre o Convite n.º 03/2022, a equipe técnica apontou a ocorrência de dano ao erário decorrente de pagamentos realizados por serviços de infraestrutura (locação de tendas, climatização e tablados) que supostamente não foram efetivamente instalados no evento de Santo Antônio. O prejuízo apurado totaliza R$ 38.720,00.
+Em sede de defesa, os jurisdicionados sustentam que inexistiu excesso, argumentando que a unidade "diária" deve ser interpretada de forma cumulativa, ou seja, em determinados dias de maior fluxo, teriam sido utilizados simultaneamente dois palcos, dois sistemas de som e múltiplas unidades de geradores e camarins para suportar a estrutura.
+Compulsando os autos, verifico que a tese defensiva carece de lastro probatório mínimo e confronta a lógica do próprio Termo de Referência. O edital foi claro ao estabelecer que a unidade de medida era a "diária" do serviço e que todos os custos de montagem, desmontagem e manutenção já deveriam estar inclusos no preço unitário.
+A tentativa de justificar o excedente pela "simultaneidade" de equipamentos é um esforço argumentativo que não resiste ao exame dos fatos por não terem sido colacionados aos autos relatórios fotográficos, plantas de layout do evento ou registros de fiscalização que demonstrassem a presença de dois palcos ou a instalação de geradores sobressalentes em datas específicas. A defesa apresentou boletins de medição subscritos pelo secretário Rubens que apenas assumiu 03 (três) meses após as datas dos carimbos, o que sugere que a liquidação da despesa não tenha sido feito após o pagamento.
+Portanto, a conduta dos gestores ao atestar a execução de quantitativos superiores ao lapso temporal da festa configura superfaturamento, gerando dano material ao patrimônio público. Sob o prisma da LINDB, a aplicação de ressarcimento e multa é imperativa, pois não se trata de mera falha formal, mas de pagamento por serviço não usufruído pela coletividade. Mantém-se a irregularidade com imputação de débito de R$ 38.720,00.
+
+2.1.4: Aditamento a contrato em quantitativos inconsistentes com o objeto, dando causa a pagamentos indevidos - Convite n. 003/2022
+A equipe técnica verificou que o aditamento para a "Missa do Vaqueiro", evento de um único dia, custou R$ 80.944,00, valor desproporcional ao contrato original de 12 dias. Calculou-se que o valor devido seria de R$ 25.224,00 (uma diária), resultando em um pagamento indevido de R$ 55.720,00.
+
+Alegações da Defesa:
+De forma similar à irregularidade anterior, a defesa alega que o quantitativo se deveu à "diversidade dos mesmos itens no mesmo dia", sugerindo a necessidade de múltiplas estruturas para o evento de um dia.
+
+Análise do Relator:
+Compulsando os autos, verifico que este achado guarda estreita conexão com a burla à modalidade licitatória já analisada. A equipe técnica apontou que o Primeiro Termo Aditivo, destinado a cobrir a "Missa do Vaqueiro", foi pactuado no valor de R$ 80.944,00. Ocorre que tal evento possui duração de apenas um único dia (o primeiro domingo de junho), mas o aditivo foi calculado sobre um montante que equivale a quase 25% do contrato original (feito para 12 dias), resultando em um excesso de R$ 55.720,00.
+A defesa repete a tese da simultaneidade, alegando que houve apresentações culturais em "palco anexo" e diversidade de itens no mesmo dia, o que justificaria o quantum pago.
+Verifico que, se a Administração tivesse respeitado os preços unitários do edital (por diária), o valor devido pelo aditamento para um dia de evento seria de R$ 25.224,00. No entanto, pagou-se mais do que o triplo desse valor.
+A alegação de "palco anexo" é uma inovação fática em sede de defesa que não encontra qualquer eco nos documentos de liquidação da despesa. O que se observa é uma transfiguração aritmética: utilizou-se o limite de 25% permitido para aditivos (Art. 65, § 1º, da Lei 8.666/93) como se fosse uma autorização para gasto automático, ignorando que qualquer aditamento deve ser precedido de justificativa técnica e orçamentária vinculada à execução real.
+A aplicação de sanção pecuniária e a obrigação de restituir o erário revelam-se proporcionais, visto que a conduta do gestor ao autorizar tal aditamento afronta o princípio da economicidade (Art. 37, caput, CF). 
+Assim, julgo pela procedência do achado, mantendo a responsabilização do Prefeito pela homologação e pagamento indevido, com o consequente dever de ressarcir o quantum de R$ 55.720,00.
+
+2.1.5 e 2.1.6: Irregularidades nas contratações por dispensa de licitação n.º 001/2023 e n.º 002/2023
+A auditoria identificou que a Prefeitura contratou por dispensa de licitação, sob alegação de urgência, a empresa J M de Morais Empreendimentos Ltda, pagando preços superiores aos que haviam sido propostos no Pregão Eletrônico n.º 001/2023, que tramitava concomitantemente (Dispensa 001/2023) e que fora revogado pouco antes da segunda contratação (Dispensa 002/2023). 
+O sobrepreço total apurado nas duas dispensas foi de R$ 186.959,08 (R$ 52.207,38 + R$ 134.751,70).
+
+Alegações da Defesa:
+A defesa argumenta que os preços do pregão não poderiam ser usados como parâmetro, pois o certame foi revogado por "erro insanável na análise técnica dos percentuais de exequibilidade". Afirma ter realizado uma pesquisa de preços com base em uma "cesta de preços" de diversas fontes, citando acórdãos do TCU que recomendam tal prática.
+
+Análise do Relator:
+Irresigna-se a auditoria quanto à contratação direta por dispensa de licitação (n.º 001/2023), fundamentada na suposta urgência para a realização de eventos carnavalescos. A equipe técnica apontou que a ausência de planejamento tempestivo deu causa a uma "urgência fabricada", uma vez que as festividades do calendário cultural são eventos de previsibilidade anual inerente, não se enquadrando nas hipóteses excepcionais do art. 24, IV, da Lei nº 8.666/93 ou art. 75, VIII, da Lei nº 14.133/21.
+Compulsando os autos, verifico que a Administração Municipal não logrou demonstrar a ocorrência de fato superveniente e imprevisto que justificasse o afastamento do dever de licitar. A realização do Carnaval é evento de conhecimento notório e fixo, exigindo do gestor diligência mínima para o deflagramento de certame competitivo em tempo hábil.
+A jurisprudência consolidada deste Tribunal e do TCU (Súmula nº 157) é pacífica no sentido de que a incúria administrativa ou a falta de planejamento não autorizam a contratação direta. Ao optar pela dispensa sem o preenchimento dos requisitos fáticos de imprevisibilidade, o gestor restringiu o universo de competidores e, consequentemente, a busca pela proposta mais vantajosa. 
+De igual modo, a unidade técnica apontou vício na contratação por dispensa n.º 002/2023, destinada a eventos subsequentes. A auditoria verificou a reiteração da prática de dispensa de licitação para objetos de mesma natureza (infraestrutura de eventos), configurando o fracionamento indevido da despesa como forma de burlar o procedimento licitatório adequado (Pregão ou Concorrência).
+Verifico que a somatória das dispensas realizadas no exercício de 2023 ultrapassa significativamente o teto legal permitido para contratações diretas de pequeno valor. A fragmentação do objeto, quando a natureza dos serviços é idêntica e a necessidade é previsível para o exercício inteiro, caracteriza burla ao processo licitatório.
+Neste caso, o nexo causal entre a omissão no planejamento global das festividades e a contratação direta é evidente. 
+
+OPÇÃO REGULAR COM RESSALVAS do achado 2.1.5 e 2.1.6
+Compulsando os autos, verifico que as irregularidades em tela versam sobre a celebração das Dispensas de Licitação n.º 001/2023 e 002/2023, ambas destinadas à infraestrutura de eventos festivos. O ponto central de controvérsia reside na inexecução/revogação de procedimentos licitatórios (Pregão Eletrônico) que deveriam ter precedido tais contratações, resultando no que a auditoria classificou como urgência fabricada.
+No caso da Dispensa 001/2023, a contratação direta ocorreu em virtude de o Pregão não ter sido concluído a tempo para o Carnaval. Já na Dispensa 002/2023, o ato foi praticado após a revogação formal do certame competitivo.
+Embora a equipe técnica aponte a falta de planejamento como fator determinante para as dispensas, cumpre analisar as "dificuldades reais do gestor" conforme preceitua o Art. 22 da LINDB. A interrupção de festividades de natureza cultural e tradicional gera impactos negativos na economia local e no lazer da coletividade. Sob este prisma, a decisão de contratar diretamente, ainda que fruto de uma tramitação administrativa morosa, visou resguardar o interesse público primário de manutenção do calendário cultural.
+Um ponto sensível diz respeito à revogação do Pregão na Dispensa 002/2023. Tecnicamente, a existência de propostas em um certame — mesmo revogado — cria um referencial de mercado para a Administração. No entanto, a Administração demonstrou ter realizado uma cesta de cotações para instruir as dispensas. Embora essa pesquisa tenha se mostrado deficiente ao resultar em preços superiores aos do pregão, não se pode afirmar que houve uma ausência completa de pesquisa de preços. 
+A falha na escolha parece residir mais na qualidade e na profundidade da cotação do que em uma deliberada intenção de contratar com sobrepreço, especialmente ao se considerar a justificativa de invalidade do pregão.
+Nesse cenário, aplicando os princípios da razoabilidade e da proporcionalidade, e considerando que a principal base para a apuração do sobrepreço foi um processo licitatório maculado por erro insanável, entendo que a conduta não configura uma irregularidade grave a ponto de justificar a imputação de débito. Trata-se, contudo, de uma falha de gestão que merece reprimenda. A pesquisa de preços, mesmo descartando o pregão, deveria ter sido mais rigorosa para garantir a contratação mais vantajosa. 
+Assim, acolho a defesa para afastar o débito, mas julgo os achados 2.1.5. e 2.1.6. como regulares com ressalvas, com a expedição de recomendação.
+
+2.1.7: Ausência de fiscalização de contratos relativos à locação de infraestrutura para festividades
+A auditoria não encontrou nos processos de pagamento relatórios, boletins de medição ou checklists que comprovassem a fiscalização da execução dos contratos, em ofensa ao artigo 67 da Lei n.º 8.666/93 e ao artigo 63, § 2º, III, da Lei n.º 4.320/64.
+Alegações da Defesa:
+A defesa contesta o achado, afirmando que os documentos foram anexados às notas fiscais, fazendo referência genérica aos "doc. 01", "doc. 02" e "doc. 03".
+
+Análise do Relator:
+A auditoria apontou, inicialmente, a ausência de elementos probatórios que atestassem a efetiva fiscalização e a execução dos serviços contratados, tais como boletins de medição e relatórios fotográficos, o que fragilizaria o processo de liquidação da despesa.
+No tocante a este ponto específico, verifico que os defendentes lograram êxito em colacionar aos autos, em sede de defesa, os boletins de medição individualizados e as notas fiscais atestadas pelo secretário da pasta. Diante da eficácia das provas documentais trazidas pela defesa, julgo pela regularidade deste item, ressalvando apenas a necessidade de que tais documentos passem a integrar o processo administrativo desde a sua origem, e não apenas após provocação desta Corte.
+
+Em conclusão, a análise dos autos revela um conjunto de práticas administrativas graves e danosas ao erário no âmbito do Convite n.º 03/2022, notadamente o fracionamento de despesa para burlar a modalidade licitatória correta e o pagamento por serviços com quantitativos superestimados e sem comprovação de execução. Por outro lado, as falhas apontadas nas dispensas de licitação, embora relevantes, não se mostraram suficientes para caracterizar dano ao erário, e a ausência de fiscalização foi sanada pela defesa.
+
+Desse modo,
+
+CONSIDERANDO o descumprimento do prazo mínimo de publicidade do Convite n.º 03/2022, que, em conjunto com as demais irregularidades, configurou restrição à competitividade do certame;
+
+CONSIDERANDO a utilização de termo aditivo para incluir objeto previsível (Missa do Vaqueiro) no Contrato n.º 03/2022, configurando fracionamento indevido de despesa e burla à modalidade licitatória de tomada de preços, em violação ao art. 23, § 5º, da Lei n.º 8.666/93;
+
+CONSIDERANDO o pagamento por diárias em quantidade superior à duração dos eventos, tanto no contrato original quanto no termo aditivo, sem a devida comprovação da necessidade e da efetiva prestação dos serviços, resultando em um dano total de R$ 94.440,00 (R$ 38.720,00 + R$ 55.720,00);
+
+**CONSIDERANDO** que, para os achados 2.1.5 e 2.1.6, a defesa logrou êxito em questionar a validade do parâmetro de preços utilizado pela auditoria (Pregão Eletrônico n.º 001/2023, revogado por vício insanável), afastando a certeza necessária para a imputação de débito por sobrepreço, mas evidenciando falha na pesquisa de mercado que justifica a aposição de ressalva;
+
+**CONSIDERANDO** que, para o achado 2.1.7, a defesa apresentou a documentação comprobatória da fiscalização contratual, sanando a irregularidade apontada;
+
+**CONSIDERANDO** o disposto nos artigos 70 e 71 da Constituição Federal, e nos artigos 59, III, 'b', 70, 71 e 73, I e III, da **Lei Estadual nº 12.600/2004** (Lei Orgânica do TCE-PE);
+
+
+I. **JULGAR IRREGULARES** os atos de gestão relacionados aos achados 2.1.1, 2.1.2, 2.1.3 e 2.1.4, imputando débito solidário no valor total de **R$ 94.440,00** (noventa e quatro mil, quatrocentos e quarenta reais), correspondente à soma dos prejuízos apurados nos itens 2.1.3 (R$ 38.720,00) e 2.1.4 (R$ 55.720,00), aos seguintes responsáveis:
+    *   a. **Sr. Marcelo Machado Freire** (Prefeito);
+    *   b. **Sra. Silvia Micaely Lima Freire** (Secretária de Cultura, Turismo e Esporte).
+
+II. **APLICAR**, com fundamento no **artigo 73, incisos I e III, da Lei Estadual nº 12.600/2004**, multa individual aos responsáveis abaixo listados:
+    *   a. **Sr. Marcelo Machado Freire** (Prefeito), pela autorização de pagamentos por serviços não comprovados (achados 2.1.3 e 2.1.4) e pela homologação de procedimento licitatório viciado (achados 2.1.1 e 2.1.2).
+    *   b. **Sra. Silvia Micaely Lima Freire** (Secretária de Cultura, Turismo e Esporte), pela solicitação de contratação e aditivo com quantitativos superestimados e não comprovados (achados 2.1.3 e 2.1.4).
+    *   c. **Sr. Leônidas Torres de Melo** (Presidente da CPL), pela condução de certame com prazo inferior ao legal (achado 2.1.1).
+    *   d. **Sr. Antônio Barbosa de Vieira** (Membro da CPL), pela participação na condução de certame com prazo inferior ao legal (achado 2.1.1).
+    *   e. **Sra. Neyla Tatyanna Amaro Alencar** (Assessora Jurídica), pela emissão de parecer favorável a edital com vício de prazo (achado 2.1.1) e a aditivo que configurou burla à modalidade licitatória (achado 2.1.2).
+
+III. **JULGAR REGULARES COM RESSALVAS** os atos de gestão relacionados aos achados 2.1.5 e 2.1.6.
+
+IV. **JULGAR REGULAR** o ato de gestão relacionado ao achado 2.1.7.
+
+V. **DETERMINAR** à atual gestão da **Prefeitura Municipal de Inajá** que:
+    *   a. Abstenha-se de realizar o fracionamento de despesas para burlar a modalidade licitatória correta, planejando adequadamente as contratações de eventos previsíveis, conforme o **artigo 23, § 5º, da Lei n.º 8.666/93**. Prazo: Imediato.
+    *   b. Assegure que os termos de referência e projetos básicos contenham quantitativos estritamente necessários à execução do objeto, com base em memórias de cálculo e justificativas técnicas detalhadas, em conformidade com o **artigo 6º, IX, da Lei n.º 8.666/93**. Prazo: Imediato.
+
+VI. **RECOMENDAR**, com base no disposto no artigo 69, parágrafo único, da Lei Estadual nº 12.600/2004, aos atuais gestores da **Prefeitura Municipal de Inajá** que, nas futuras contratações diretas, aprimorem a pesquisa de preços, utilizando uma cesta de cotações ampla e documentada, incluindo, sempre que possível, preços de licitações de outros entes públicos e sistemas de registro de preços, a fim de garantir a obtenção da proposta mais vantajosa, em observância ao princípio da economicidade.
+
+VII. **DAR CIÊNCIA** à **Prefeitura Municipal de Inajá** que o descumprimento do prazo mínimo de publicidade do edital, como o ocorrido no **Convite n.º 03/2022**, contraria o **artigo 21, § 2º, IV, da Lei n.º 8.666/93** e constitui irregularidade passível de sanção, a fim de evitar a reincidência.
+
+**É o voto.**
+
+
