@@ -23,8 +23,12 @@ RUN npm install
 # Copy application files
 COPY . .
 
+# Declare ARGs for build-time environment variables (Next.js requires them baked in)
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+
 # Build the Next.js application
-RUN NEXT_PUBLIC_SUPABASE_URL="https://placeholder.supabase.co" NEXT_PUBLIC_SUPABASE_ANON_KEY="placeholder" npm run build
+RUN npm run build
 
 # Expose port 3000
 EXPOSE 3000
