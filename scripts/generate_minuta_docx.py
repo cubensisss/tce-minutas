@@ -72,37 +72,56 @@ def generate_docx(data, output_path):
     if processo.get('descricao_objeto'):
         clear_and_set(p[15], processo['descricao_objeto'])
 
-    # 4. Limpar o restante do Documento
-    # Como o template "Modelo andressa" contém textos hardcoded de outro processo,
-    # precisamos APAGAR todos os parágrafos do índice 16 até o final.
-    for para in list(doc.paragraphs)[16:]:
-        element = para._element
-        if element.getparent() is not None:
-            element.getparent().remove(element)
+    # 4. Truncar Documento de forma absoluta
+    # O template original tem tabelas escondidas no final. Deletamos todos os elementos apos p[15].
+    body = doc._body._element
+    p15 = p[15]._element
+    p15_index = body.index(p15)
     
-    # Atualiza o last_para para o último que sobrou (que será próximo ao idx 15)
-    last_para = doc.paragraphs[-1]
+    for child in list(body)[p15_index+1:]:
+        body.remove(child)
+        
+    def add_p(text, bold=False, italic=False, alignment=WD_ALIGN_PARAGRAPH.JUSTIFY, font_size=12):
+        new_para = doc.add_paragraph()
+        run = new_para.add_run(text)
+        run.bold = bold
+        run.italic = italic
+        run.font.size = Pt(font_size)
+        run.font.name = 'Arial'
+        new_para.alignment = alignment
+        return new_para
+
+    def add_bordered_title(title_text):
+        t = doc.add_table(rows=1, cols=1)
+        try:
+            t.style = 'Table Grid'
+        except:
+            pass
+        p_cell = t.cell(0, 0).paragraphs[0]
+        p_cell.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = p_cell.add_run(title_text)
+        run.bold = True
+        run.font.size = Pt(12)
+        run.font.name = 'Arial'
 
     # 5. Inserir Relatório
     if relatorio:
-        new_p = add_paragraph_after(doc, last_para, "", font_size=12) # espaco
-        last_para = add_paragraph_after(doc, new_p, "RELATÓRIO", bold=True, font_size=12, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+        doc.add_paragraph() # espaco
+        add_bordered_title("RELATÓRIO")
         
         lines = relatorio.split('\n')
         for line in lines:
             line = line.strip()
             if not line: continue
             clean = re.sub(r'[#*]+', '', line).strip()
-            new_p = add_paragraph_after(doc, last_para, clean, font_size=12, alignment=WD_ALIGN_PARAGRAPH.JUSTIFY)
-            last_para = new_p
+            add_p(clean)
             
-        # Fechamento padrão do TCE-PE para o relatório
-        last_para = add_paragraph_after(doc, last_para, "É o relatório.", font_size=12, alignment=WD_ALIGN_PARAGRAPH.JUSTIFY)
+        add_p("É o relatório.")
 
     # 6. Inserir Análise (VOTO)
     if analise:
-        new_p = add_paragraph_after(doc, last_para, "", font_size=12) # espaco
-        last_para = add_paragraph_after(doc, new_p, "VOTO", bold=True, font_size=12, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+        doc.add_paragraph() # espaco
+        add_bordered_title("VOTO")
         
         lines = analise.split('\n')
         for line in lines:
@@ -110,13 +129,12 @@ def generate_docx(data, output_path):
             if not line: continue
             is_h = line.startswith('###')
             clean = re.sub(r'[#*]+', '', line).strip()
-            new_p = add_paragraph_after(doc, last_para, clean, bold=is_h, font_size=12, alignment=WD_ALIGN_PARAGRAPH.JUSTIFY)
-            last_para = new_p
+            add_p(clean, bold=is_h)
 
     # 7. Inserir Decisão
     if decisao:
-        new_p = add_paragraph_after(doc, last_para, "", font_size=12) # espaco
-        last_para = add_paragraph_after(doc, new_p, "Ante o exposto, profiro o seguinte VOTO:", bold=True, font_size=12, alignment=WD_ALIGN_PARAGRAPH.JUSTIFY)
+        doc.add_paragraph() # espaco
+        add_p("Ante o exposto, profiro o seguinte VOTO:", bold=True)
         
         lines = decisao.split('\n')
         for line in lines:
@@ -124,8 +142,7 @@ def generate_docx(data, output_path):
             if not line: continue
             clean = re.sub(r'[#*]+', '', line).strip()
             is_bold = bool('CONSIDERANDO' in clean.upper() or re.match(r'^[IVX]+\.', clean))
-            new_p = add_paragraph_after(doc, last_para, clean, bold=is_bold, font_size=12, alignment=WD_ALIGN_PARAGRAPH.JUSTIFY)
-            last_para = new_p
+            add_p(clean, bold=is_bold)
 
     doc.save(output_path)
     print(f"DOCX gerado: {output_path}")
