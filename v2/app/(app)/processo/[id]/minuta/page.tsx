@@ -157,7 +157,7 @@ export default function MinutaPage({ params }: Props) {
           <h1 className="text-3xl font-display font-semibold text-primary">Minuta</h1>
           <p className="text-on-surface-variant mt-1">Revise abaixo. Você pode regerar ou baixar como DOCX.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 justify-end">
           <Link href={`/processo/${id}/similares`} className="btn-ghost">
             <span className="material-symbols-outlined text-base">travel_explore</span>
             Similares
