@@ -13,6 +13,7 @@ export default function MinutaPage({ params }: Props) {
   const [minuta, setMinuta] = useState<Minuta | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [baixando, setBaixando] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -63,6 +64,44 @@ export default function MinutaPage({ params }: Props) {
       setError(err instanceof Error ? err.message : 'erro');
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function baixarDocx() {
+    setBaixando(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/minuta/docx?processo_id=${id}`);
+      if (!res.ok) {
+        let msg = `Falha ao gerar DOCX (HTTP ${res.status})`;
+        try {
+          const j = await res.json();
+          msg = j.message ?? j.error ?? msg;
+        } catch {
+          // não é json
+        }
+        throw new Error(msg);
+      }
+      const blob = await res.blob();
+      if (blob.size === 0) {
+        throw new Error('O arquivo gerado veio vazio.');
+      }
+      const downloadBlob = new Blob([blob], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      const url = URL.createObjectURL(downloadBlob);
+      const filename = `minuta_${id}.docx`;
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        a.remove();
+        URL.revokeObjectURL(url);
+      }, 1000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao baixar DOCX');
+    } finally {
+      setBaixando(false);
     }
   }
 
@@ -131,15 +170,14 @@ export default function MinutaPage({ params }: Props) {
             <span className="material-symbols-outlined text-base">refresh</span>
             Regerar
           </button>
-          <a
-            href={`/api/minuta/docx?processo_id=${id}`}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={baixarDocx}
+            disabled={baixando}
             className="btn-primary"
           >
             <span className="material-symbols-outlined text-base">download</span>
-            Baixar DOCX
-          </a>
+            {baixando ? 'Baixando...' : 'Baixar DOCX'}
+          </button>
         </div>
       </header>
 
