@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+/* =============================================================================
+   Design tokens — portados do v1 (Material Design 3 reduzido)
+   Usar via classes Tailwind: bg-surface, text-on-surface, border-outline-variant
+   ============================================================================= */
+
+@theme {
+  /* Tipografia */
+  --font-sans: "Newsreader", ui-serif, Georgia, "Times New Roman", serif;
+  --font-display: "Newsreader", ui-serif, Georgia, serif;
+
+  /* Cores institucionais (azul TCE-PE) */
+  --color-primary: #0A3D62;
+  --color-primary-container: #DBE8F1;
+  --color-on-primary: #FFFFFF;
+  --color-on-primary-container: #082C46;
+
+  /* Superfícies */
+  --color-background: #FAFAF7;
+  --color-surface: #FFFFFF;
+  --color-surface-variant: #F3F1ED;
+  --color-surface-tint: #0A3D62;
+  --color-on-surface: #1A1A1A;
+  --color-on-surface-variant: #4A4A4A;
+
+  /* Bordas / contornos */
+  --color-outline: #79747E;
+  --color-outline-variant: #CAC4D0;
+
+  /* Estados */
+  --color-error: #B3261E;
+  --color-error-container: #F9DEDC;
+  --color-on-error: #FFFFFF;
+  --color-success: #1F6B33;
+  --color-success-container: #D4EDDA;
+  --color-warning: #B45309;
+  --color-warning-container: #FEF3C7;
+
+  /* Tons */
+  --color-tertiary: #7E5260;
+  --color-tertiary-container: #FFD8E4;
+
+  /* Sombras (níveis Material) */
+  --shadow-elev-1: 0 1px 2px rgb(0 0 0 / 0.05), 0 1px 3px rgb(0 0 0 / 0.05);
+  --shadow-elev-2: 0 2px 4px rgb(0 0 0 / 0.06), 0 4px 8px rgb(0 0 0 / 0.06);
+  --shadow-elev-3: 0 4px 8px rgb(0 0 0 / 0.08), 0 8px 16px rgb(0 0 0 / 0.08);
+}
+
+/* =============================================================================
+   Base
+   ============================================================================= */
+
+html, body {
+  background: var(--color-background);
+  color: var(--color-on-surface);
+  font-family: var(--font-sans);
+  font-feature-settings: "kern", "liga";
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+
+/* Scrollbar discreta */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-outline-variant) transparent;
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--color-outline-variant);
+  border-radius: 4px;
+}
+
+/* =============================================================================
+   Componentes base — só os que usamos em várias páginas
+   ============================================================================= */
+
+@layer components {
+  .card {
+    @apply bg-surface border border-outline-variant rounded-2xl p-6 shadow-[var(--shadow-elev-1)];
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full
+           bg-primary text-on-primary font-medium text-sm
+           hover:bg-on-primary-container transition-colors
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full
+           text-on-surface-variant hover:bg-surface-variant transition-colors
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .input {
+    @apply w-full px-4 py-2.5 rounded-xl border border-outline-variant
+           bg-surface text-on-surface placeholder:text-outline
+           focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20
+           transition-colors;
+  }
+  .label {
+    @apply block text-sm font-medium text-on-surface-variant mb-2;
+  }
+}

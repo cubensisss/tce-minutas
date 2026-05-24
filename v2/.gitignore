@@ -1,0 +1,47 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# testing
+coverage/
+.vitest-cache/
+
+# next.js
+.next/
+out/
+
+# production
+build/
+dist/
+
+# misc
+.DS_Store
+*.pem
+Thumbs.db
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# local env files
+.env*.local
+.env
+!.env.example
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# credentials (NUNCA commitar)
+credencial_gcp.json
+*.gcp.json
+gcp-key.json
+
+# editor
+.vscode/
+.idea/
+*.swp

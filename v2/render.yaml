@@ -1,0 +1,47 @@
+# Render Blueprint para tce-minutas-v2
+# Faz deploy de uma Web Service Node 20 em plano Free.
+# Variáveis sensíveis devem ser preenchidas no painel — não commitar.
+services:
+  - type: web
+    name: tce-minutas-v2
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    rootDir: v2
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_FLASH_MODEL
+        value: gemini-2.5-flash
+      - key: GEMINI_PRO_MODEL
+        value: gemini-2.5-pro
+      - key: GCP_PROJECT_ID
+        value: uptemporada
+      - key: GCP_LOCATION
+        value: global
+      - key: VERTEX_DATA_STORE_ID
+        value: tceandressa_1775759460294
+      - key: VERTEX_APP_ID
+        value: tceandressa_1775759242362
+      - key: GOOGLE_APPLICATION_CREDENTIALS_JSON
+        sync: false
+      - key: ALLOWED_USER_EMAIL
+        sync: false
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: LOG_LEVEL
+        value: info
