@@ -133,7 +133,8 @@ export default function MinutaPage({ params }: Props) {
           </button>
           <a
             href={`/api/minuta/docx?processo_id=${id}`}
-            download={`minuta_${id}.docx`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="btn-primary"
           >
             <span className="material-symbols-outlined text-base">download</span>
