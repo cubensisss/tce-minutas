@@ -37,7 +37,7 @@ services:
         value: tceandressa_1775759242362
       - key: GOOGLE_APPLICATION_CREDENTIALS_JSON
         sync: false
-      - key: ALLOWED_USER_EMAIL
+      - key: ALLOWED_USER_EMAILS
         sync: false
       - key: NEXT_PUBLIC_SITE_URL
         sync: false
