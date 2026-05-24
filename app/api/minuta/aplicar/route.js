@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
+}
 const SECOES_VALIDAS = ['ementa', 'relatorio', 'analise_completa', 'decisao_voto'];
 export async function POST(request) {
   const { processoId, secao, texto } = await request.json();
@@ -18,7 +20,7 @@ export async function POST(request) {
   }
 
   // Find the latest minuta for this processo
-  const { data: minutaAtual, error: findError } = await supabase
+  const { data: minutaAtual, error: findError } = await getSupabase()
     .from('minutas')
     .select('id, versao')
     .eq('processo_id', processoId)
@@ -30,7 +32,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Minuta não encontrada para este processo.' }, { status: 404 });
   }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await getSupabase()
     .from('minutas')
     .update({ [secao]: texto })
     .eq('id', minutaAtual.id);

@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
+}
 
 // GET - List all processos
 export async function GET() {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('processos')
     .select('*')
     .order('updated_at', { ascending: false });
@@ -19,7 +21,7 @@ export async function GET() {
 // POST - Create new processo
 export async function POST(request) {
   const body = await request.json();
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('processos')
     .insert([body])
     .select()

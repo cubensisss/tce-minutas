@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
+}
 
 export async function POST(request) {
   const { processoId, message } = await request.json();
@@ -16,9 +18,9 @@ export async function POST(request) {
   }
 
   // Get context
-  const { data: processo } = await supabase.from('processos').select('*').eq('id', processoId).single();
-  const { data: minuta } = await supabase.from('minutas').select('*').eq('processo_id', processoId).order('versao', { ascending: false }).limit(1).single();
-  const { data: history } = await supabase.from('chat_mensagens').select('*').eq('processo_id', processoId).order('created_at').limit(20);
+  const { data: processo } = await getSupabase().from('processos').select('*').eq('id', processoId).single();
+  const { data: minuta } = await getSupabase().from('minutas').select('*').eq('processo_id', processoId).order('versao', { ascending: false }).limit(1).single();
+  const { data: history } = await getSupabase().from('chat_mensagens').select('*').eq('processo_id', processoId).order('created_at').limit(20);
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({

@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
+}
 
 // Vertex AI Search config
 const PROJECT_ID = 'uptemporada';
@@ -13,12 +15,22 @@ const APP_ID = 'tceandressa_1775759242362';
 const LOCATION = 'global';
 
 async function getAccessToken() {
-  // Use service account credentials stored as env var or file
-  const keyPath = process.env.GCP_KEY_FILE || 'c:\\Users\\Tercio\\Documents\\TCE\\TCE\\credencial_gcp.json';
-  
   try {
-    const fs = await import('fs');
-    const keyFile = JSON.parse(fs.readFileSync(keyPath, 'utf-8'));
+    // Support both: env var with JSON content, or file path (local dev)
+    let keyFile;
+    const credsJson = process.env.GCP_CREDENTIALS_JSON;
+    if (credsJson) {
+      keyFile = JSON.parse(credsJson);
+    } else {
+      // Fallback: read from file (local development only)
+      const keyPath = process.env.GCP_KEY_FILE;
+      if (!keyPath) {
+        console.error('Nenhuma credencial GCP configurada (GCP_CREDENTIALS_JSON ou GCP_KEY_FILE)');
+        return null;
+      }
+      const fs = await import('fs');
+      keyFile = JSON.parse(fs.readFileSync(keyPath, 'utf-8'));
+    }
     
     // Create JWT for service account
     const jwt = await createServiceAccountJWT(keyFile);
@@ -148,7 +160,7 @@ export async function POST(request) {
   
   if (!queries || queries.length === 0) {
     // Auto-generate queries from achados
-    const { data: achados } = await supabase
+    const { data: achados } = await getSupabase()
       .from('achados')
       .select('titulo, resumo_ia')
       .eq('processo_id', processoId);

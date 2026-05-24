@@ -1,13 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabase } from '@/app/lib/supabase';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import fs from 'fs';
-import path from 'path';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
 
 async function fetchVetorial(processoId, achados) {
   try {
@@ -69,36 +62,30 @@ export async function POST(request) {
   }
 
   // 1. Get processo + achados + configs
-  const { data: processo } = await supabase.from('processos').select('*').eq('id', processoId).single();
-  const { data: achados } = await supabase.from('achados').select('*').eq('processo_id', processoId).order('ordem');
-  const { data: configs } = await supabase.from('configuracoes').select('*');
+  const { data: processo } = await getSupabase().from('processos').select('*').eq('id', processoId).single();
+  const { data: achados } = await getSupabase().from('achados').select('*').eq('processo_id', processoId).order('ordem');
+  const { data: configs } = await getSupabase().from('configuracoes').select('*');
   const configMap = {};
   (configs || []).forEach(c => { configMap[c.chave] = c.valor; });
 
   // 2. Fetch vector search results (precedents from Conselheiro)
   const precedentes = await fetchVetorial(processoId, achados);
 
-  // 2.5 Fetch local full documents (Opção B)
+  // 2.5 Fetch full document texts from Supabase
   let documentosBrutos = '';
   try {
-    const baseDir = "C:\\Users\\Tercio\\Documents\\TCE\\TCE\\Elaborando Voto";
-    if (fs.existsSync(baseDir)) {
-      const folders = fs.readdirSync(baseDir);
-      // Clean string match looking for process numeric pattern
-      const processFolder = folders.find(f => f.includes(processo.numero));
-      if (processFolder) {
-        const cleanDir = path.join(baseDir, processFolder, '_clean');
-        if (fs.existsSync(cleanDir)) {
-          const txtFiles = fs.readdirSync(cleanDir).filter(f => f.endsWith('.txt'));
-          for (const file of txtFiles) {
-            const content = fs.readFileSync(path.join(cleanDir, file), 'utf-8');
-            documentosBrutos += `\n\n=== DOCUMENTO DE INSTRUÇÃO PROCESSUAL: ${file} ===\n${content}\n`;
-          }
-        }
+    const { data: docs } = await getSupabase()
+      .from('documentos')
+      .select('nome_arquivo, tipo, texto_extraido')
+      .eq('processo_id', processoId);
+    
+    for (const doc of (docs || [])) {
+      if (doc.texto_extraido && doc.texto_extraido.length > 10) {
+        documentosBrutos += `\n\n=== DOCUMENTO DE INSTRUÇÃO PROCESSUAL: ${doc.nome_arquivo} ===\n${doc.texto_extraido}\n`;
       }
     }
   } catch (error) {
-    console.error("Erro ao ler documentos originais:", error);
+    console.error("Erro ao ler documentos do Supabase:", error);
   }
 
   // 3. Build achados context
@@ -203,7 +190,7 @@ Crie a MINUTA COMPLETA E EXTENSAMENTE VERBORRÁGICA DO VOTO, perfeitamente fraci
     }
 
     // 5. Get version number
-    const { data: existingMinutas } = await supabase
+    const { data: existingMinutas } = await getSupabase()
       .from('minutas')
       .select('versao')
       .eq('processo_id', processoId)
@@ -213,7 +200,7 @@ Crie a MINUTA COMPLETA E EXTENSAMENTE VERBORRÁGICA DO VOTO, perfeitamente fraci
     const nextVersion = (existingMinutas && existingMinutas.length > 0) ? existingMinutas[0].versao + 1 : 1;
 
     // 6. Save minuta
-    const { error: insertError } = await supabase.from('minutas').insert([{
+    const { error: insertError } = await getSupabase().from('minutas').insert([{
       processo_id: processoId,
       versao: nextVersion,
       ementa: minutaData.ementa || '',
@@ -234,7 +221,7 @@ Crie a MINUTA COMPLETA E EXTENSAMENTE VERBORRÁGICA DO VOTO, perfeitamente fraci
     if (minutaData.exercicio) updates.exercicio = minutaData.exercicio;
 
     if (Object.keys(updates).length > 0) {
-      const { error: updateProcErr } = await supabase
+      const { error: updateProcErr } = await getSupabase()
         .from('processos')
         .update(updates)
         .eq('id', processoId);
@@ -244,7 +231,7 @@ Crie a MINUTA COMPLETA E EXTENSAMENTE VERBORRÁGICA DO VOTO, perfeitamente fraci
       }
     }
 
-    await supabase.from('processos').update({ status: 'revisao' }).eq('id', processoId);
+    await getSupabase().from('processos').update({ status: 'revisao' }).eq('id', processoId);
 
     return NextResponse.json({ success: true, versao: nextVersion });
   } catch (err) {

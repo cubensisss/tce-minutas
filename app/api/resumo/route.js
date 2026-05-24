@@ -1,102 +1,31 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import fs from 'fs';
-import path from 'path';
 
-const execAsync = promisify(exec);
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
+}
 
 async function extractTextFromStorage(processoId) {
-  // 1. Get document records
-  const { data: docs } = await supabase
+  const { data: docs } = await getSupabase()
     .from('documentos')
-    .select('*')
+    .select('tipo, texto_extraido')
     .eq('processo_id', processoId);
 
   if (!docs || docs.length === 0) return { auditTexts: '', defenseTexts: '' };
-
-  const tmpDir = path.join(process.cwd(), 'tmp', 'resumo_' + processoId.substring(0, 8));
-  if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
 
   let auditTexts = '';
   let defenseTexts = '';
 
   for (const doc of docs) {
-    // Check if already extracted
     if (doc.texto_extraido && doc.texto_extraido.length > 10) {
       if (doc.tipo === 'auditoria') auditTexts += '\n\n' + doc.texto_extraido;
       else defenseTexts += '\n\n' + doc.texto_extraido;
-      continue;
-    }
-
-    // Download from Supabase Storage
-    console.log(`[resumo] Baixando ${doc.nome_arquivo}...`);
-    try {
-      const { data: fileData, error } = await supabase.storage
-        .from('documentos')
-        .download(doc.storage_path);
-
-      if (error || !fileData) {
-        console.error(`[resumo] Erro no download de ${doc.nome_arquivo}:`, error);
-        continue;
-      }
-
-      // Save to temp file - SANITIZE FILENAME for Windows compatibility
-      const safeName = doc.nome_arquivo.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const tmpFile = path.join(tmpDir, safeName);
-      const buffer = Buffer.from(await fileData.arrayBuffer());
-      fs.writeFileSync(tmpFile, buffer);
-
-      // Extract text using Python script
-      const scriptPath = path.join(process.cwd(), 'scripts', 'extract_text.py');
-      if (!fs.existsSync(scriptPath)) {
-        console.error(`[resumo] Script não encontrado: ${scriptPath}`);
-        continue;
-      }
-      
-      console.log(`[resumo] Extraindo texto de ${safeName}...`);
-      const { stdout } = await execAsync(`python "${scriptPath}" --file "${tmpFile}"`);
-      
-      let results;
-      try {
-        results = JSON.parse(stdout);
-      } catch (jsonErr) {
-        console.error(`[resumo] Falha no JSON.parse do texto extraído:`, stdout.substring(0, 200));
-        continue;
-      }
-      
-      const text = results[0]?.text || '';
-
-      if (text.startsWith('ERRO')) {
-        console.error(`[resumo] Erro do script Python para ${safeName}:`, text);
-        continue;
-      }
-
-      // Save extracted text back to DB
-      console.log(`[resumo] Salvando texto extraído (${text.length} chars) no banco...`);
-      await supabase.from('documentos')
-        .update({ texto_extraido: text })
-        .eq('id', doc.id);
-
-      if (doc.tipo === 'auditoria') auditTexts += '\n\n' + text;
-      else defenseTexts += '\n\n' + text;
-
-      // Cleanup temp file
-      try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile); } catch {}
-    } catch (docErr) {
-      console.error(`[resumo] Erro ao processar documento ${doc.nome_arquivo}:`, docErr.message);
     }
   }
-
-  // Cleanup temp dir
-  try { if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
 
   return { auditTexts, defenseTexts };
 }
@@ -167,7 +96,7 @@ ${defenseTexts.substring(0, 500000)}`;
     console.log(`[resumo] Processando ${achados.length} achados...`);
 
     // Delete and Re-insert
-    await supabase.from('achados').delete().eq('processo_id', processoId);
+    await getSupabase().from('achados').delete().eq('processo_id', processoId);
     
     const insertData = achados.slice(0, 30).map((a, i) => ({
       processo_id: processoId,
@@ -180,10 +109,10 @@ ${defenseTexts.substring(0, 500000)}`;
       ordem: i
     }));
 
-    const { error: insertError } = await supabase.from('achados').insert(insertData);
+    const { error: insertError } = await getSupabase().from('achados').insert(insertData);
     if (insertError) throw insertError;
 
-    await supabase.from('processos').update({ status: 'resumo' }).eq('id', processoId);
+    await getSupabase().from('processos').update({ status: 'resumo' }).eq('id', processoId);
 
     console.log('[resumo] Sucesso!');
     return NextResponse.json({ success: true, count: achados.length });
