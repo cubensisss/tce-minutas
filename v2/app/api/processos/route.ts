@@ -32,7 +32,7 @@ const NewProcessoSchema = z.object({
 
 const PLACEHOLDER_NUMERO = '(extraindo...)';
 const PLACEHOLDER_UNIDADE = '(extraindo...)';
-const DEFAULT_RELATOR = 'Andressa Cordeiro';
+const DEFAULT_RELATOR = 'Rodrigo Novaes';
 
 export async function GET() {
   const supabase = await createServerClient();

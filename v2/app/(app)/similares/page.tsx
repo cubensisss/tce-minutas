@@ -33,7 +33,7 @@ export default function SimilaresGlobalPage() {
       <header>
         <h1 className="text-3xl font-display font-semibold text-primary">Similares</h1>
         <p className="text-on-surface-variant mt-1">
-          Busca livre na base vetorial de jurisprudência (TCE Andressa).
+          Busca livre na base vetorial de jurisprudência (TCE-PE (Rodrigo Novaes)).
         </p>
       </header>
 

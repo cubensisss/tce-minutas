@@ -44,7 +44,7 @@ export async function generateMinutaDocx(input: GenerateDocxInput): Promise<Buff
     nullGetter: () => '',
   });
 
-  const relatorClean = (input.processo.relator ?? 'Andressa Cordeiro')
+  const relatorClean = (input.processo.relator ?? 'Rodrigo Novaes')
     .replace(/(CONSELHEIRO\(A\)\s*|CONSELHEIRO\s*|CONSELHEIRA\s*)+/gi, '')
     .trim();
 

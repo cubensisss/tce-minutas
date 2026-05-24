@@ -103,7 +103,7 @@ export default function MinutaPage({ params }: Props) {
             </p>
           </div>
           <p className="text-xs text-on-surface-variant mt-3">
-            O Gemini Pro está consultando os documentos brutos, as diretrizes e os precedentes do TCE-Andressa.
+            O Gemini Pro está consultando os documentos brutos, as diretrizes e os precedentes do TCE-PE (Gabinete Rodrigo Novaes).
           </p>
         </div>
       </div>

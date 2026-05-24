@@ -118,7 +118,7 @@ export default function SimilaresProcessoPage({ params }: Props) {
           Processos similares
         </h1>
         <p className="text-on-surface-variant mt-1">
-          Top 3 resultados da base TCE-Andressa por relevância.
+          Top 3 resultados da base TCE-PE (Rodrigo Novaes) por relevância.
           {cached && <span className="ml-2 text-xs px-2 py-0.5 bg-surface-variant rounded-full">cache</span>}
         </p>
       </header>

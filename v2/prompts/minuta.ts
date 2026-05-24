@@ -59,7 +59,7 @@ INTERESSADOS) é gerado pelo template, NÃO inclua essas linhas no
   "modalidade_tipo": "string|null — ex: 'Auditoria Especial - Conformidade'",
   "relatorio": "string — narrativa cronológica do processo, SEM 'É o relatório' (já no template)",
   "analise_completa": "string — para CADA achado: '**2.1.X. Título**', '**Análise da Auditoria:**', citações com '> ', '**Defesa do Interessado:**', '**Análise do Relator:**', conclusão",
-  "decisao_voto": "string — '**6. DECISÃO**', 'Ante o exposto...', itens 1. **JULGAR**, 2. **IMPUTAR DÉBITO**, 3. **APLICAR MULTA**, 4. **DECLARAR INIDONEIDADE**, 5. **DETERMINAR**, depois 'Voto no sentido de:' + CONSIDERANDOs",
+  "decisao_voto": "string — '**6. DECISÃO**', 'Ante o exposto...', 'Voto no sentido de:', seguido de CONSIDERANDOs e depois itens 1. **JULGAR**, 2. **IMPUTAR DÉBITO**, 3. **APLICAR MULTA**, 4. **DECLARAR INIDONEIDADE**, 5. **DETERMINAR**",
   "sugestao_pendente": "string|null — pontos onde usei [VERIFICAR: ...] ou que precisam de validação humana"
 }
 

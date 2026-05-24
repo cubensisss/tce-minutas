@@ -283,7 +283,15 @@ Estrutura obrigatória, exatamente nesta ordem:
 
    **6. DECISÃO**
 
-   Ante o exposto, profiro o seguinte VOTO:
+   Ante o exposto,
+
+   Voto no sentido de:
+
+   **CONSIDERANDO** [fatos do processo];
+
+   **CONSIDERANDO** [fundamento legal aplicável];
+
+   **CONSIDERANDO** [outros pontos relevantes];
 
    1. **JULGAR [IRREGULARES / REGULARES COM RESSALVAS / REGULARES]**
       as contas objeto da presente [Auditoria Especial / Prestação
@@ -306,22 +314,8 @@ Estrutura obrigatória, exatamente nesta ordem:
       as seguintes providências: ... (sempre incluir, mesmo em
       regularidade — pelo menos uma orientação pedagógica).
 
-   Deste modo,
-
-   Voto no sentido de:
-
-   **CONSIDERANDO** [fatos do processo];
-
-   **CONSIDERANDO** [fundamento legal aplicável];
-
-   **CONSIDERANDO** [outros pontos relevantes];
-
-   [Repetir os itens 1-5 acima como conclusão final, OU usar a forma
-    "JULGAR / IMPUTAR / APLICAR / DETERMINAR" em parágrafos próprios.]
-
 REGRAS de formatação do dispositivo:
-   - Cada item começa com VERBO em CAIXA ALTA dentro de **negrito**.
+   - Cada item de decisão começa com VERBO em CAIXA ALTA dentro de **negrito**.
    - Numeração 1., 2., 3., ... (não usar I, II, III neste campo).
-   - Os CONSIDERANDOs vêm DEPOIS dos itens numerados, introduzidos
-     por "Voto no sentido de:".
+   - Os CONSIDERANDOs vêm DEPOIS da frase "Voto no sentido de:" e ANTES dos itens numerados (Julgar, Imputar, Aplicar, etc).
 `.trim();
