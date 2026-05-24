@@ -67,42 +67,17 @@ export default function MinutaPage({ params }: Props) {
     }
   }
 
-  async function baixarDocx() {
+  function baixarDocx() {
     setBaixando(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/minuta/docx?processo_id=${id}`);
-      if (!res.ok) {
-        let msg = `Falha ao gerar DOCX (HTTP ${res.status})`;
-        try {
-          const j = await res.json();
-          msg = j.message ?? j.error ?? msg;
-        } catch {
-          // não é json
-        }
-        throw new Error(msg);
-      }
-      const blob = await res.blob();
-      if (blob.size === 0) {
-        throw new Error('O arquivo gerado veio vazio.');
-      }
-      const downloadBlob = new Blob([blob], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-      const url = URL.createObjectURL(downloadBlob);
-      const filename = `minuta_${id}.docx`;
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        a.remove();
-        URL.revokeObjectURL(url);
-      }, 1000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao baixar DOCX');
-    } finally {
+    // O Chrome costuma bloquear a.click() assíncrono se demorar muito.
+    // Usar window.location delega o download nativamente ao navegador.
+    window.location.href = `/api/minuta/docx?processo_id=${id}`;
+    
+    // O navegador não nos avisa quando o download conclui via href, 
+    // então voltamos o botão ao normal após um tempo razoável.
+    setTimeout(() => {
       setBaixando(false);
-    }
+    }, 2500);
   }
 
 
