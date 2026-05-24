@@ -13,7 +13,7 @@ export default function MinutaPage({ params }: Props) {
   const [minuta, setMinuta] = useState<Minuta | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [baixando, setBaixando] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -66,56 +66,7 @@ export default function MinutaPage({ params }: Props) {
     }
   }
 
-  async function baixarDocx() {
-    setBaixando(true);
-    setError(null);
-    try {
-      console.log('[docx] iniciando fetch...');
-      const res = await fetch(`/api/minuta/docx?processo_id=${id}`);
-      console.log('[docx] resposta:', res.status, res.headers.get('content-type'), res.headers.get('content-length'));
-      if (!res.ok) {
-        // Tenta ler mensagem de erro JSON; se não for JSON, usa o status.
-        let msg = `Falha ao gerar DOCX (HTTP ${res.status})`;
-        try {
-          const j = await res.json();
-          msg = j.message ?? j.error ?? msg;
-        } catch {
-          /* resposta não-JSON */
-        }
-        throw new Error(msg);
-      }
-      const blob = await res.blob();
-      console.log('[docx] blob criado, tamanho:', blob.size, 'tipo:', blob.type);
-      if (blob.size === 0) {
-        throw new Error('O arquivo gerado veio vazio. Tente regerar a minuta.');
-      }
-      // Força o MIME genérico de download — alguns navegadores ignoram o
-      // click() quando o tipo é "abrível" e tentam renderizar em vez de baixar.
-      const downloadBlob = new Blob([blob], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(downloadBlob);
-      const filename = `minuta_${id}.docx`;
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.rel = 'noopener';
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      console.log('[docx] disparando click de download:', filename);
-      a.click();
-      // NÃO removemos o <a> nem revogamos a URL imediatamente — fazê-lo
-      // síncrono cancela o download em alguns navegadores. Damos folga.
-      setTimeout(() => {
-        a.remove();
-        URL.revokeObjectURL(url);
-      }, 4000);
-      console.log('[docx] click disparado — verifique a barra/pasta de downloads');
-    } catch (err) {
-      console.error('[docx] erro:', err);
-      setError(err instanceof Error ? err.message : 'erro ao baixar DOCX');
-    } finally {
-      setBaixando(false);
-    }
-  }
+
 
   if (loading) {
     return (
