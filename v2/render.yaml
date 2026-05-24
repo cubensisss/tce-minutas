@@ -7,7 +7,7 @@ services:
     runtime: node
     plan: free
     region: oregon
-    branch: main
+    branch: master
     rootDir: v2
     buildCommand: npm install && npm run build
     startCommand: npm run start
