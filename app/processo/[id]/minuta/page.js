@@ -10,6 +10,8 @@ export default function MinutaPage() {
   const { id } = useParams();
   const [processo, setProcesso] = useState(null);
   const [minuta, setMinuta] = useState(null);
+  const [versoes, setVersoes] = useState([]);
+  const [versaoSelecionada, setVersaoSelecionada] = useState(null);
   const [achados, setAchados] = useState([]);
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
@@ -33,14 +35,48 @@ export default function MinutaPage() {
       .from('minutas')
       .select('*')
       .eq('processo_id', id)
-      .order('versao', { ascending: false })
-      .limit(1);
+      .order('versao', { ascending: false });
     
     const { data: ach } = await supabase.from('achados').select('*').eq('processo_id', id).order('ordem');
     
     setProcesso(proc);
-    setMinuta(minList && minList.length > 0 ? minList[0] : null);
+    setVersoes(minList || []);
+    
+    if (minList && minList.length > 0) {
+      setMinuta(minList[0]);
+      setVersaoSelecionada(minList[0].versao);
+    } else {
+      setMinuta(null);
+      setVersaoSelecionada(null);
+    }
     setAchados(ach || []);
+  }
+
+  function handleSelecionarVersao(versaoNum) {
+    const min = versoes.find(v => v.versao === versaoNum);
+    if (min) {
+      setMinuta(min);
+      setVersaoSelecionada(versaoNum);
+    }
+  }
+
+  async function reverterParaVersao(versaoNum) {
+    if (!window.confirm(`Deseja reverter a minuta ativa para a versão ${versaoNum}? Uma nova versão contendo o texto da versão ${versaoNum} será criada.`)) {
+      return;
+    }
+    setApplying(true);
+    const res = await fetch('/api/minuta/aplicar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ processoId: id, versaoAlvo: versaoNum }),
+    });
+    if (res.ok) {
+      await loadData();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alert('Erro ao reverter: ' + (err.error || 'Desconhecido'));
+    }
+    setApplying(false);
   }
 
   async function loadMessages() {
@@ -229,8 +265,35 @@ export default function MinutaPage() {
                 <div className="w-px h-6 bg-outline-variant/30 mx-2"></div>
                 <button className="p-2 hover:bg-surface-container-high rounded transition-colors"><span className="material-symbols-outlined text-lg">format_align_justify</span></button>
               </div>
-              <div className="flex items-center gap-3">
-                <button className="text-sm font-medium px-4 py-2 hover:bg-surface-container-high transition-colors">Salvar Rascunho</button>
+              <div className="flex items-center gap-4">
+                {versoes.length > 0 && (
+                  <div className="flex items-center gap-2 border border-outline-variant/20 rounded-xl px-3 py-1.5 bg-surface-container-high shadow-sm">
+                    <span className="text-xs font-semibold text-on-surface-variant flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-sm text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>history</span>
+                      Versão:
+                    </span>
+                    <select 
+                      value={versaoSelecionada || ''} 
+                      onChange={(e) => handleSelecionarVersao(Number(e.target.value))}
+                      className="bg-transparent text-xs font-bold text-primary outline-none cursor-pointer pr-1"
+                    >
+                      {versoes.map((v, i) => (
+                        <option key={v.versao} value={v.versao} className="text-on-surface">
+                          v{v.versao} {i === 0 ? '(Ativa / Atual)' : `(Alterada em ${new Date(v.created_at || Date.now()).toLocaleDateString('pt-BR')})`}
+                        </option>
+                      ))}
+                    </select>
+                    {versaoSelecionada !== versoes[0]?.versao && (
+                      <button 
+                        onClick={() => reverterParaVersao(versaoSelecionada)}
+                        className="text-[11px] font-bold bg-primary text-white px-2.5 py-0.5 rounded-lg shadow hover:bg-primary/95 transition-all flex items-center gap-0.5"
+                      >
+                        <span className="material-symbols-outlined text-xs">restore</span>
+                        Restaurar
+                      </button>
+                    )}
+                  </div>
+                )}
                 <button onClick={exportDocx} disabled={exporting}
                   className="text-sm font-semibold bg-primary text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50"
                 >
