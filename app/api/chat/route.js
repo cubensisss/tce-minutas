@@ -50,9 +50,12 @@ Solicitação do Conselheiro: ${message}
 
 DIRETRIZES OBRIGATÓRIAS:
 1. NUNCA retorne a minuta inteira. Isso poluiria o chat.
-2. Se a solicitação pede uma alteração textual, proponha APENAS o trecho específico revisado.
-3. Pergunte ao final se o Conselheiro aprova a redação proposta e deseja aplicá-la.
-4. Se a mensagem for uma confirmação de aplicação ("sim", "pode", "confirma", "aplica", "ok", "aprovo" etc.), identifique a seção e o texto final a aplicar.
+2. Se a solicitação pede uma alteração textual, proponha APENAS o trecho específico revisado. Ao propor qualquer reescrita ou revisão textual (campo 'texto' dentro de 'sugestao'), você DEVE obrigatoriamente deixar em **negrito (utilizando a sintaxe de asteriscos do markdown)** todas as inovações, adições ou alterações propostas no texto.
+3. PROIBIÇÃO DE DIRETRIZES: Na redação da Análise do Relator/Voto, nunca inclua termos de metaconversação ou referências a diretrizes do sistema. É terminantemente proibido usar termos como "como bem observado nas diretrizes deste voto", "acolho a orientação de", ou assemelhados.
+4. RIGOR NOS PRECEDENTES: Sempre que citar jurisprudência ou precedentes nas alterações textuais propostas, inclua obrigatoriamente o número do processo ou do acórdão e, se possível, o nome do conselheiro relator.
+5. FUNDAMENTAÇÃO REAL: A fundamentação das revisões deve se basear estritamente nos autos do processo e documentos anexos, evitando depender unicamente de resumos genéricos ou de menor fidelidade.
+6. Pergunte ao final se o Conselheiro aprova a redação proposta e deseja aplicá-la.
+7. Se a mensagem for uma confirmação de aplicação ("sim", "pode", "confirma", "aplica", "ok", "aprovo" etc.), identifique a seção e o texto final a aplicar.
 
 Responda EXCLUSIVAMENTE em JSON válido com este esquema:
 {
