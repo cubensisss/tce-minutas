@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createServerClient } from '@/lib/supabase/server';
+import { DeleteProcessButton } from './_components/DeleteProcessButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,19 +60,26 @@ export default async function DashboardPage() {
 
 function ProcessoCard({ processo }: { processo: Processo }) {
   return (
-    <Link href={`/processo/${processo.id}/resumo`} className="card hover:shadow-[var(--shadow-elev-2)] transition-shadow block">
-      <div className="flex items-start justify-between mb-3">
+    <div className="card hover:shadow-[var(--shadow-elev-2)] transition-shadow block relative group">
+      <div className="flex items-start justify-between mb-3 relative z-10">
         <span className="text-xs uppercase tracking-wide text-on-surface-variant">Processo</span>
-        <StatusBadge status={processo.status} />
+        <div className="flex items-center gap-2">
+          <StatusBadge status={processo.status} />
+          <DeleteProcessButton id={processo.id} />
+        </div>
       </div>
-      <h3 className="font-display text-xl text-primary mb-2">{processo.numero}</h3>
-      <p className="text-sm text-on-surface-variant line-clamp-2">
+      <h3 className="font-display text-xl text-primary mb-2">
+        <Link href={`/processo/${processo.id}/resumo`} className="before:absolute before:inset-0 before:z-0">
+          {processo.numero}
+        </Link>
+      </h3>
+      <p className="text-sm text-on-surface-variant line-clamp-2 relative z-10 pointer-events-none">
         {processo.unidade_jurisdicionada ?? '— Unidade não informada —'}
       </p>
-      <p className="text-xs text-on-surface-variant mt-4">
+      <p className="text-xs text-on-surface-variant mt-4 relative z-10 pointer-events-none">
         {new Date(processo.created_at).toLocaleDateString('pt-BR')}
       </p>
-    </Link>
+    </div>
   );
 }
 
