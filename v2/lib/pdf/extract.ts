@@ -30,8 +30,26 @@ export async function extractFromBuffer(
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
 
   if (ext === 'pdf') return extractPdf(bytes, filename);
-  if (ext === 'docx') return extractDocx(bytes, filename);
-  if (ext === 'xml') return extractXml(bytes, filename);
+  
+  if (ext === 'docx' || ext === 'xml' || ext === 'doc') {
+    try {
+      // Tenta como DOCX (ZIP) primeiro
+      return await extractDocx(bytes, filename);
+    } catch (err) {
+      log.warn({ err, filename }, 'Falha no formato ZIP/DOCX. Tentando leitura como XML puro ou RTF...');
+      try {
+        const res = await extractXml(bytes, filename);
+        // Se extrair um monte de caracteres nulos, provavelmente é um binário .doc
+        if (res.text.split('\u0000').length > 50) {
+          throw new Error('Arquivo parece ser um formato binário muito antigo (.doc) não suportado. Por favor converta para PDF.');
+        }
+        return res;
+      } catch (xmlErr) {
+        throw new Error(`O arquivo "${filename}" não pôde ser lido nem como DOCX nem como XML. Converta para PDF.`);
+      }
+    }
+  }
+
   throw new Error(`Extensão não suportada: .${ext} (${filename})`);
 }
 
