@@ -23,8 +23,8 @@ describe('ResumoSchema', () => {
       achados: [{ numero: '1', titulo: 't', descricao: 'd' }],
     });
     expect(r.processo.interessados).toEqual([]);
-    expect(r.achados[0].gravidade).toBe('media');
-    expect(r.achados[0].fundamentacao_legal).toEqual([]);
+    expect(r.achados[0]!.gravidade).toBe('media');
+    expect(r.achados[0]!.fundamentacao_legal).toEqual([]);
   });
 
   it('rejeita gravidade inválida', () => {

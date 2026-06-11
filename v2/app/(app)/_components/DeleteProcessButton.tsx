@@ -20,7 +20,7 @@ export function DeleteProcessButton({ id }: { id: string }) {
       const res = await fetch(`/api/processo/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Falha ao apagar');
       router.refresh(); // Atualiza a lista na tela inicial
-    } catch (err) {
+    } catch {
       alert('Erro ao apagar o processo');
     } finally {
       setLoading(false);
