@@ -172,11 +172,26 @@ export async function generateJson<T>(
 }
 
 function stripJsonFences(s: string): string {
-  return s
+  let cleaned = s
     .trim()
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/```\s*$/, '')
     .trim();
+
+  // Se houver lixo após o fechamento do JSON, cortamos fora
+  if (cleaned.startsWith('{')) {
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (lastBrace !== -1) {
+      cleaned = cleaned.substring(0, lastBrace + 1);
+    }
+  } else if (cleaned.startsWith('[')) {
+    const lastBracket = cleaned.lastIndexOf(']');
+    if (lastBracket !== -1) {
+      cleaned = cleaned.substring(0, lastBracket + 1);
+    }
+  }
+
+  return cleaned;
 }
 
 function sleep(ms: number) {
