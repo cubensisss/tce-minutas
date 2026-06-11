@@ -108,25 +108,25 @@ export default function NovoProcessoPage() {
 
       <form onSubmit={handleSubmit} className="card space-y-5">
         <div>
-          <label className="label" htmlFor="relatorio">Relatório de auditoria (PDF ou DOCX)</label>
+          <label className="label" htmlFor="relatorio">Relatório de auditoria (PDF, DOCX ou XML)</label>
           <input
             id="relatorio"
             name="relatorio"
             type="file"
-            accept=".pdf,.docx"
+            accept=".pdf,.docx,.xml"
             required
             className="input file:bg-primary file:text-on-primary file:border-0 file:rounded-full file:px-4 file:py-1 file:mr-4"
           />
         </div>
 
         <div>
-          <label className="label" htmlFor="defesa">Defesas prévias (PDF ou DOCX, várias)</label>
+          <label className="label" htmlFor="defesa">Defesas prévias (PDF, DOCX ou XML, várias)</label>
           <input
             id="defesa"
             name="defesa"
             type="file"
             multiple
-            accept=".pdf,.docx"
+            accept=".pdf,.docx,.xml"
             className="input file:bg-primary file:text-on-primary file:border-0 file:rounded-full file:px-4 file:py-1 file:mr-4"
           />
         </div>

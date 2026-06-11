@@ -31,6 +31,7 @@ export async function extractFromBuffer(
 
   if (ext === 'pdf') return extractPdf(bytes, filename);
   if (ext === 'docx') return extractDocx(bytes, filename);
+  if (ext === 'xml') return extractXml(bytes, filename);
   throw new Error(`Extensão não suportada: .${ext} (${filename})`);
 }
 
@@ -79,5 +80,33 @@ async function extractDocx(bytes: Uint8Array, filename: string): Promise<Extract
   } catch (err) {
     log.error({ err, filename }, 'falha ao extrair DOCX');
     throw new Error(`Erro ao extrair DOCX "${filename}": ${(err as Error).message}`);
+  }
+}
+
+async function extractXml(bytes: Uint8Array, filename: string): Promise<ExtractedDocument> {
+  try {
+    const decoder = new TextDecoder('utf-8');
+    const rawXml = decoder.decode(bytes);
+    
+    const text = rawXml
+      // tag replacement
+      .replace(/<[^>]+>/g, ' ')
+      // entities
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n\s+/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+      
+    if (!text) throw new Error('XML parece não conter texto útil');
+    
+    return { filename, text, pages: [text], charCount: text.length, warnings: [] };
+  } catch (err) {
+    log.error({ err, filename }, 'falha ao extrair XML');
+    throw new Error(`Erro ao extrair XML "${filename}": ${(err as Error).message}`);
   }
 }

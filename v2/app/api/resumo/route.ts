@@ -27,14 +27,15 @@ export const maxDuration = 300;
 const Body = z.object({ processo_id: z.string().uuid() });
 
 export async function POST(request: NextRequest) {
-  const parsed = Body.safeParse(await request.json().catch(() => ({})));
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
-  }
+  try {
+    const parsed = Body.safeParse(await request.json().catch(() => ({})));
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
+    }
 
-  const supabase = await createServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    const supabase = await createServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   // 1. Carrega documentos do processo
   const { data: docs, error: docErr } = await supabase
@@ -131,8 +132,13 @@ export async function POST(request: NextRequest) {
 
   const defesasText = await Promise.all(
     defesasDocs.map(async (d) => {
-      const r = await extractWithFallback(d.storage_path, d.filename, false);
-      return { filename: d.filename, text: r.text, usedOcr: r.usedOcr };
+      try {
+        const r = await extractWithFallback(d.storage_path, d.filename, false);
+        return { filename: d.filename, text: r.text, usedOcr: r.usedOcr };
+      } catch (err) {
+        log.warn({ err, filename: d.filename }, 'falha ao extrair defesa, ignorando');
+        return { filename: d.filename, text: '', usedOcr: false };
+      }
     }),
   );
 
@@ -186,5 +192,12 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ ok: true, resumo });
+  } catch (err) {
+    log.error({ err }, 'erro não tratado em /api/resumo');
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Erro interno do servidor' },
+      { status: 500 }
+    );
+  }
 }
 
