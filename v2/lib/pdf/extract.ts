@@ -97,6 +97,9 @@ async function extractXml(bytes: Uint8Array, filename: string): Promise<Extracte
       .replace(/&amp;/g, '&')
       .replace(/&quot;/g, '"')
       .replace(/&apos;/g, "'")
+      // Remove strings gigantescas sem espaços (geralmente base64 de assinaturas/anexos dentro do XML)
+      // que consomem todos os tokens da IA e causam timeout, mas preserva todo o texto real
+      .replace(/[A-Za-z0-9+/=]{500,}/g, '')
       .replace(/[ \t]+/g, ' ')
       .replace(/\n\s+/g, '\n')
       .replace(/\n{3,}/g, '\n\n')

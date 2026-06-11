@@ -165,8 +165,22 @@ export async function generateJson<T>(
   try {
     parsed = JSON.parse(cleaned);
   } catch (err) {
-    log.error({ raw: raw.slice(0, 500) }, 'JSON.parse falhou na resposta do Gemini');
-    throw new Error(`Gemini retornou JSON inválido: ${(err as Error).message}`);
+    const msg = (err as Error).message;
+    // Tenta recuperar do erro "Unexpected non-whitespace character after JSON at position XXX"
+    const match = msg.match(/position\s+(\d+)/i);
+    if (match) {
+      const pos = parseInt(match[1], 10);
+      try {
+        parsed = JSON.parse(cleaned.substring(0, pos));
+        log.warn({ pos }, 'Recuperado de lixo no final do JSON usando a posição do erro');
+      } catch (fallbackErr) {
+        log.error({ raw: raw.slice(0, 500) }, 'JSON.parse fallback falhou');
+        throw new Error(`Gemini retornou JSON inválido: ${msg}`);
+      }
+    } else {
+      log.error({ raw: raw.slice(0, 500) }, 'JSON.parse falhou na resposta do Gemini');
+      throw new Error(`Gemini retornou JSON inválido: ${msg}`);
+    }
   }
   return opts.schema.parse(parsed);
 }
