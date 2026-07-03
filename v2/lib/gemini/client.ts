@@ -168,7 +168,7 @@ export async function generateJson<T>(
     const msg = (err as Error).message;
     // Tenta recuperar do erro "Unexpected non-whitespace character after JSON at position XXX"
     const match = msg.match(/position\s+(\d+)/i);
-    if (match) {
+    if (match && match[1]) {
       const pos = parseInt(match[1], 10);
       try {
         parsed = JSON.parse(cleaned.substring(0, pos));
