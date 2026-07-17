@@ -173,7 +173,7 @@ export async function generateJson<T>(
       try {
         parsed = JSON.parse(cleaned.substring(0, pos));
         log.warn({ pos }, 'Recuperado de lixo no final do JSON usando a posição do erro');
-      } catch (fallbackErr) {
+      } catch {
         log.error({ raw: raw.slice(0, 500) }, 'JSON.parse fallback falhou');
         throw new Error(`Gemini retornou JSON inválido: ${msg}`);
       }

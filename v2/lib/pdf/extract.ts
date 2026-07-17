@@ -44,7 +44,7 @@ export async function extractFromBuffer(
           throw new Error('Arquivo parece ser um formato binário muito antigo (.doc) não suportado. Por favor converta para PDF.');
         }
         return res;
-      } catch (xmlErr) {
+      } catch {
         throw new Error(`O arquivo "${filename}" não pôde ser lido nem como DOCX nem como XML. Converta para PDF.`);
       }
     }

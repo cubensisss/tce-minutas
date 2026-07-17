@@ -12,7 +12,7 @@ export async function GET() {
     // ou usamos um RPC genérico, mas para garantir, vamos tentar ler a tabela de profiles ou users.
     // O auth.users falha via API REST, então usamos o admin.listUsers() que usa a porta da API.
     
-    const { data, error } = await supabase.auth.admin.listUsers({
+    const { error } = await supabase.auth.admin.listUsers({
       page: 1,
       perPage: 1
     });
@@ -28,8 +28,9 @@ export async function GET() {
       timestamp: new Date().toISOString()
     });
 
-  } catch (err: any) {
-    console.error('Erro inesperado no keep-alive:', err);
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    console.error('Erro inesperado no keep-alive:', error);
     return NextResponse.json({ status: 'error', message: err.message }, { status: 500 });
   }
 }
