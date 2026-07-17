@@ -1,0 +1,17 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    # Roda a cada 3 dias as 00:00 UTC
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # Permite rodar manualmente no painel do GitHub
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase API para evitar pausa
+        run: |
+          curl -X GET 'https://kzinyfwvcoaaldbjnqls.supabase.co/rest/v1/processos?limit=1' \
+          -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6aW55Znd2Y29hYWxkYmpucWxzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyODAxODgsImV4cCI6MjA5MTg1NjE4OH0.p2Bv8PACKZZqS7CB1GCuHdnSbECIg4JbAKi13cvVBf0' \
+          -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6aW55Znd2Y29hYWxkYmpucWxzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyODAxODgsImV4cCI6MjA5MTg1NjE4OH0.p2Bv8PACKZZqS7CB1GCuHdnSbECIg4JbAKi13cvVBf0'

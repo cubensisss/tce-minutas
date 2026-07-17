@@ -94,6 +94,52 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error?.message ?? 'insert_failed' }, { status: 500 });
     }
 
+    // --- LIMPEZA AUTOMÁTICA (Storage API) ---
+    // Garante que o usuário só terá os 2 últimos processos salvos.
+    try {
+      // 1. Pega os IDs dos 2 processos mais recentes
+      const { data: keepData } = await supabase
+        .from('processos')
+        .select('id')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(2);
+        
+      if (keepData && keepData.length === 2) {
+        const keepIds = keepData.map((p) => p.id);
+        
+        // 2. Acha todos os outros processos que não sejam esses 2
+        const { data: deleteData } = await supabase
+          .from('processos')
+          .select('id')
+          .eq('owner_id', user.id)
+          .not('id', 'in', `(${keepIds.join(',')})`);
+          
+        if (deleteData && deleteData.length > 0) {
+          const deleteIds = deleteData.map((p) => p.id);
+          
+          // 3. Busca os caminhos de todos os documentos desses processos antigos
+          const { data: docs } = await supabase
+            .from('documentos')
+            .select('storage_path')
+            .in('processo_id', deleteIds);
+            
+          // 4. Deleta fisicamente do Storage via API oficial
+          if (docs && docs.length > 0) {
+            const paths = docs.map((d) => d.storage_path);
+            await supabase.storage.from('documentos').remove(paths);
+          }
+          
+          // 5. Deleta os registros do banco (apaga documentos em cascata)
+          await supabase.from('processos').delete().in('id', deleteIds);
+          log.info({ limpados: deleteIds.length }, 'Processos antigos e PDFs removidos');
+        }
+      }
+    } catch (cleanupErr) {
+      log.error({ err: cleanupErr }, 'Falha na rotina de limpeza');
+    }
+    // --- FIM DA LIMPEZA ---
+
     return NextResponse.json({ id: processo.id }, { status: 201 });
   } catch (err) {
     log.error({ err }, 'erro inesperado em POST /api/processos');
