@@ -31,6 +31,6 @@ export async function GET() {
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
     console.error('Erro inesperado no keep-alive:', error);
-    return NextResponse.json({ status: 'error', message: err.message }, { status: 500 });
+    return NextResponse.json({ status: 'error', message: error.message }, { status: 500 });
   }
 }
