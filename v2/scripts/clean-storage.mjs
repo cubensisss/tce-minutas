@@ -16,8 +16,34 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+async function listAllFilesRecursively(bucket, path) {
+  let allFiles = [];
+  const { data, error } = await supabase.storage.from(bucket).list(path);
+  
+  if (error) {
+    console.error(`Erro ao listar ${path}:`, error);
+    return allFiles;
+  }
+  
+  for (const item of data || []) {
+    const fullPath = path ? `${path}/${item.name}` : item.name;
+    // Se id é nulo e não tem metadata, geralmente é uma subpasta (ou se name não tem extensão, mas id null é garantido para pastas reais ou placeholders)
+    // No Supabase, pastas retornadas pelo list() tem id = null e created_at = null
+    if (item.id === null) {
+      const subFiles = await listAllFilesRecursively(bucket, fullPath);
+      allFiles = allFiles.concat(subFiles);
+      // Opcionalmente podemos tentar deletar a pasta vazia adicionando o placeholder
+      allFiles.push(`${fullPath}/.emptyFolderPlaceholder`);
+    } else {
+      allFiles.push(fullPath);
+    }
+  }
+  
+  return allFiles;
+}
+
 async function cleanOrphanedStorage() {
-  console.log("Iniciando limpeza de arquivos órfãos no Storage...");
+  console.log("Iniciando limpeza profunda de arquivos órfãos no Storage...");
 
   // 1. Pega todos os IDs válidos de processos
   const { data: processos, error: dbError } = await supabase
@@ -32,7 +58,7 @@ async function cleanOrphanedStorage() {
   const validProcessIds = new Set(processos.map(p => p.id));
   console.log(`Encontrados ${validProcessIds.size} processos válidos no banco de dados.`);
 
-  // 2. Lista os arquivos/pastas na raiz do bucket "documentos"
+  // 2. Lista as pastas na raiz do bucket "documentos"
   const { data: rootItems, error: storageError } = await supabase.storage
     .from('documentos')
     .list();
@@ -47,46 +73,32 @@ async function cleanOrphanedStorage() {
   let deletedCount = 0;
 
   for (const item of rootItems) {
-    // Se não for o .emptyFolderPlaceholder e o nome não estiver nos validProcessIds
     if (item.name !== '.emptyFolderPlaceholder' && !validProcessIds.has(item.name)) {
-      console.log(`Órfão detectado: ${item.name}. Buscando conteúdo para deletar...`);
+      console.log(`Órfão detectado: ${item.name}. Buscando conteúdo profundamente...`);
 
-      // Tenta listar o conteúdo da pasta
-      const { data: folderItems, error: listError } = await supabase.storage
-        .from('documentos')
-        .list(item.name);
+      const allFilesToDelete = await listAllFilesRecursively('documentos', item.name);
+      // Adiciona também a própria pasta na raiz (caso seja um emptyFolderPlaceholder)
+      allFilesToDelete.push(item.name);
+      allFilesToDelete.push(`${item.name}/.emptyFolderPlaceholder`);
 
-      if (listError) {
-        console.error(`Erro ao listar itens da pasta ${item.name}:`, listError);
-        continue;
-      }
-
-      if (folderItems && folderItems.length > 0) {
-        const filesToDelete = folderItems.map(f => `${item.name}/${f.name}`);
+      // Deleta em lotes de 100 para não estourar o limite da API
+      for (let i = 0; i < allFilesToDelete.length; i += 100) {
+        const batch = allFilesToDelete.slice(i, i + 100);
         const { error: deleteError } = await supabase.storage
           .from('documentos')
-          .remove(filesToDelete);
-
+          .remove(batch);
+        
         if (deleteError) {
-          console.error(`Erro ao deletar arquivos de ${item.name}:`, deleteError);
-        } else {
-          console.log(`Deletados ${filesToDelete.length} arquivos da pasta ${item.name}.`);
-          deletedCount++;
-        }
-      } else {
-        // Se for um arquivo solto ou pasta vazia
-        const { error: removeRootError } = await supabase.storage
-          .from('documentos')
-          .remove([item.name]);
-        if (!removeRootError) {
-          console.log(`Deletado item raiz: ${item.name}`);
-          deletedCount++;
+          console.error(`Erro ao deletar lote da pasta ${item.name}:`, deleteError);
         }
       }
+      
+      console.log(`Foram submetidos para deleção ${allFilesToDelete.length} arquivos/pastas de ${item.name}.`);
+      deletedCount++;
     }
   }
 
-  console.log(`Limpeza concluída! Removidas ${deletedCount} pastas/arquivos órfãos.`);
+  console.log(`Limpeza concluída! Removidas profundamente ${deletedCount} pastas órfãs.`);
 }
 
 cleanOrphanedStorage();
