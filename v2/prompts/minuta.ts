@@ -52,7 +52,7 @@ INTERESSADOS) é gerado pelo template, NÃO inclua essas linhas no
 "relatorio".
 
 {
-  "ementa": "string — bloco de palavras-chave em caixa alta + dispositivos numerados (1., 2., 3.)",
+  "ementa": "string — a ementa completa seguindo rigorosamente a ESTRUTURA de Caso em Exame, Razões de Decidir e Dispositivo e Tese (fornecida no prompt do usuário)",
   "descricao_objeto": "string|null — síntese do que foi auditado",
   "interessados": "string|null — lista de nomes (use o que veio no resumo)",
   "exercicio": "string|null — ano do exercício auditado",
@@ -63,13 +63,14 @@ INTERESSADOS) é gerado pelo template, NÃO inclua essas linhas no
   "sugestao_pendente": "string|null — pontos onde usei [VERIFICAR: ...] ou que precisam de validação humana"
 }
 
-REGRAS DE MARKDOWN (o DOCX converte literalmente):
+REGRAS DE MARKDOWN E TOM (o DOCX converte literalmente):
+- **Evite expressões fortes e deterministas**, mantendo um tom equilibrado e técnico ao longo de toda a minuta.
 - **negrito** vira negrito real no Word.
 - *itálico* vira itálico real.
 - "> trecho" no início da linha vira CITAÇÃO INDENTADA EM ITÁLICO
   (use sempre para reproduzir trechos literais de auditoria/defesa).
-- Parágrafos separados por linha em branco (\\n\\n).
-- NÃO usar tabelas, listas com "- ", nem cabeçalhos com "# ".
+- Parágrafos separados por linha em branco (\n\n).
+- NÃO usar tabelas, listas com "- ", nem cabeçalhos com "# " (exceto os exigidos na estrutura da Ementa).
 - NÃO incluir o cabeçalho "TRIBUNAL DE CONTAS DO ESTADO DE PERNAMBUCO"
   nem a IDENTIFICAÇÃO DO PROCESSO em nenhum campo — o template já
   renderiza essas caixas.`;
@@ -107,18 +108,46 @@ ${docsBlock}
 
 # PRECEDENTES JURISPRUDENCIAIS DO TCE-PE
 # Esta é a SUA FONTE de jurisprudência. Leia cada trecho com atenção:
-# - Se um trecho citar número de acórdão/processo (ex: "Acórdão TC nº
-#   1891/19", "Processo nº 24101338-0"), você PODE e DEVE reproduzir esse
-#   número na análise do achado aderente, no formato real.
-# - Extraia o número EXATAMENTE como está escrito. Nunca invente nem
-#   complete números. Se o trecho não tiver número, não cite acórdão nominal.
+# - NUNCA chame de "Precedente 1", "Precedente 2", etc. na minuta gerada.
+# - Para referenciar uma jurisprudência, cite OBRIGATORIAMENTE o Nº do Acórdão, a Unidade Jurisdicionada (UJ) e o Relator do processo (se essas informações constarem no trecho fornecido).
+# - Extraia as informações EXATAMENTE como estão escritas. Nunca invente dados. Se o trecho não tiver esses dados, não cite a jurisprudência nominalmente.
 # - Aproveite a fundamentação dos trechos (teses, dispositivos, raciocínio)
 #   para enriquecer a Análise do Relator do achado correspondente.
 # - Use um precedente apenas no achado a que ele for materialmente aderente.
 ${precedentesBlock}
 
+# INSTRUÇÕES PARA A EMENTA
+ESCREVA a EMENTA do caso fornecido, seguindo estritamente a ESTRUTURA abaixo. Cite apenas fatos, normas e precedentes do caso fornecido. Comece o texto com "Ementa:".
+
+ESTRUTURA
+Use o formato da ESTRUTURA aqui fornecida, melhorando, adaptando e incluindo o que for necessário para garantir clareza, coesão, coerência, objetividade e precisão:
+
+Ementa: MODALIDADE DO PROCESSO. FRASE OU PALAVRAS QUE INDIQUEM O ASSUNTO PRINCIPAL DO MAIS GERAL AO MAIS ESPECÍFICO DIVIDIDOS POR PONTO EM LETRA MAIÚSCULA. CONCLUSÃO.
+
+### I. CASO EM EXAME
+Apresente o caso, com a indicação dos fatos relevantes
+
+### II. RAZÕES DE DECIDIR
+Apresente as principais justificativas que fundamentam a decisão, extraídas da fundamentação. Cada justificativa autônoma deve ser redigida em um item numerado (2., 3., 4., etc.), de forma concisa e objetiva, contendo apenas uma ideia central por item. Utilize quantos itens forem necessários para contemplar todas as justificativas relevantes.
+
+### III. DISPOSITIVO E TESE
+Apresente o resultado do julgamento. Exemplo: Regularidade/Regularidade com ressalvas/irregularidade OU Recurso provido/desprovido.
+Tese de julgamento: Enumere a(s) tese(s) jurídica(s) firmada(s) no julgamento (ratio decidendi), de forma concisa e objetiva, seguindo esta formatação: "1. [Tese 1]. 2. [Tese 2]. 3. [Tese 3]..." Cada tese deve ser redigida como uma única frase, iniciando com letra maiúscula e terminando com ponto final
+
+EXEMPLO DE EMENTA BEM FORMATADA:
+***Ementa***: AUDITORIA ESPECIAL. PROPOSTA DE PADRONIZAÇÃO. EMENTA-PADRÃO. RECOMENDAÇÃO DE MODELO PARA A ELABORAÇÃO DE EMENTAS PELOS TRIBUNAIS. APROVAÇÃO.
+### I. CASO EM EXAME
+1. Proposta de padronização de ementas dos acórdãos proferidos pelos mais de 90 tribunais brasileiros.
+### II. RAZÕES DE DECIDIR
+2. Ementas devem ser claras, objetivas e escritas em linguagem simples, sob pena de prejudicar a pesquisa e a compreensão pelas partes do processo, pela comunidade jurídica e pela população em geral.
+3. Precedentes que não são conhecidos ou compreendidos não podem ser seguidos. Assim, a padronização das ementas favorece a consolidação do sistema brasileiro de precedentes.
+4. Por fim, a adoção de um modelo de ementas favorece o treinamento de ferramentas de inteligência artificial para a busca de precedentes.
+### III. DISPOSITIVO E TESE
+5. Recomendação aprovada.
+
+
 # TAREFA
-Elabore a minuta de voto seguindo RIGOROSAMENTE a estrutura padrão.
+Elabore a minuta de voto seguindo RIGOROSAMENTE a estrutura padrão e as instruções da ementa acima.
 
 Para CADA achado das diretrizes, na seção 5 (analise_completa):
   1. Bloco "Análise da auditoria": entre aspas, transcreva pelo menos
