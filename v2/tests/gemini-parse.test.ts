@@ -5,6 +5,8 @@ import {
   parseGeminiJson,
   toGeminiResponseSchema,
 } from '@/lib/gemini/structured';
+import { ResumoSchema } from '@/schemas/resumo';
+import { MinutaSchema } from '@/schemas/minuta';
 
 describe('cleanGeminiJson', () => {
   it('remove fence ```json ... ```', () => {
@@ -41,10 +43,20 @@ describe('toGeminiResponseSchema', () => {
     expect(result.type).toBe('OBJECT');
     expect(result).not.toHaveProperty('$schema');
     expect(result).not.toHaveProperty('additionalProperties');
+    expect(JSON.stringify(result)).not.toContain('"default"');
     expect(result.properties).toMatchObject({
       nome: { type: 'STRING' },
       nivel: { type: 'STRING', enum: ['leve', 'grave'] },
       detalhes: { type: 'STRING', nullable: true },
     });
+  });
+
+  it.each([
+    ['resumo', ResumoSchema],
+    ['minuta', MinutaSchema],
+  ])('remove defaults do schema real de %s', (_name, schema) => {
+    const serialized = JSON.stringify(toGeminiResponseSchema(schema));
+    expect(serialized).not.toContain('"default"');
+    expect(serialized).not.toContain('"additionalProperties"');
   });
 });

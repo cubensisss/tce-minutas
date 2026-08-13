@@ -17,7 +17,14 @@ function normalizeSchema(value: unknown): unknown {
 
   const out: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value)) {
-    if (key === '$schema' || key === 'additionalProperties' || key === 'definitions') continue;
+    // `default` e os demais campos abaixo podem ser produzidos pelo conversor,
+    // mas nao sao aceitos em schemas de RESPOSTA da Gemini API.
+    if (
+      key === '$schema' ||
+      key === 'additionalProperties' ||
+      key === 'definitions' ||
+      key === 'default'
+    ) continue;
     if (key === 'type' && typeof child === 'string') {
       out[key] = child.toUpperCase();
       continue;
