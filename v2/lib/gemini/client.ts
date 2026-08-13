@@ -13,6 +13,7 @@ import { GoogleGenAI } from '@google/genai';
 import { z, type ZodSchema } from 'zod';
 import { getEnv } from '@/lib/env';
 import { loggerFor } from '@/lib/logger';
+import { parseGeminiJson, toGeminiResponseSchema } from '@/lib/gemini/structured';
 
 const log = loggerFor('gemini');
 
@@ -33,6 +34,8 @@ export type GenerateOptions = {
   temperature?: number;
   /** Esperamos JSON estrito? Liga responseMimeType + responseSchema. */
   json?: boolean;
+  /** Schema convertido para o formato aceito pela Gemini API. */
+  responseSchema?: ReturnType<typeof toGeminiResponseSchema>;
   /** Timeout em ms. Default 90s. */
   timeoutMs?: number;
   /** Retries em erros transitórios. Default 2. */
@@ -60,6 +63,7 @@ export async function generateText(opts: GenerateOptions): Promise<string> {
             ...(opts.system ? { systemInstruction: opts.system } : {}),
             temperature: opts.temperature ?? 0.4,
             ...(opts.json ? { responseMimeType: 'application/json' } : {}),
+            ...(opts.json && opts.responseSchema ? { responseSchema: opts.responseSchema } : {}),
             ...(opts.maxOutputTokens ? { maxOutputTokens: opts.maxOutputTokens } : {}),
           },
         });
@@ -159,53 +163,37 @@ export async function generateTextWithFile(opts: GenerateWithFileOptions): Promi
 export async function generateJson<T>(
   opts: Omit<GenerateOptions, 'json'> & { schema: ZodSchema<T> },
 ): Promise<T> {
-  const raw = await generateText({ ...opts, json: true });
-  const cleaned = stripJsonFences(raw);
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch (err) {
-    const msg = (err as Error).message;
-    // Tenta recuperar do erro "Unexpected non-whitespace character after JSON at position XXX"
-    const match = msg.match(/position\s+(\d+)/i);
-    if (match && match[1]) {
-      const pos = parseInt(match[1], 10);
-      try {
-        parsed = JSON.parse(cleaned.substring(0, pos));
-        log.warn({ pos }, 'Recuperado de lixo no final do JSON usando a posição do erro');
-      } catch {
-        log.error({ raw: raw.slice(0, 500) }, 'JSON.parse fallback falhou');
-        throw new Error(`Gemini retornou JSON inválido: ${msg}`);
-      }
-    } else {
-      log.error({ raw: raw.slice(0, 500) }, 'JSON.parse falhou na resposta do Gemini');
-      throw new Error(`Gemini retornou JSON inválido: ${msg}`);
-    }
-  }
-  return opts.schema.parse(parsed);
-}
+  const { schema, ...generationOptions } = opts;
+  const responseSchema = toGeminiResponseSchema(schema);
+  let lastError: unknown;
 
-function stripJsonFences(s: string): string {
-  let cleaned = s
-    .trim()
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/```\s*$/, '')
-    .trim();
-
-  // Se houver lixo após o fechamento do JSON, cortamos fora
-  if (cleaned.startsWith('{')) {
-    const lastBrace = cleaned.lastIndexOf('}');
-    if (lastBrace !== -1) {
-      cleaned = cleaned.substring(0, lastBrace + 1);
-    }
-  } else if (cleaned.startsWith('[')) {
-    const lastBracket = cleaned.lastIndexOf(']');
-    if (lastBracket !== -1) {
-      cleaned = cleaned.substring(0, lastBracket + 1);
+  // Se uma resposta rara chegar truncada ou invalida, gera novamente uma vez.
+  for (let structuredAttempt = 0; structuredAttempt < 2; structuredAttempt++) {
+    const raw = await generateText({
+      ...generationOptions,
+      json: true,
+      responseSchema,
+    });
+    try {
+      return schema.parse(parseGeminiJson(raw));
+    } catch (err) {
+      lastError = err;
+      log.warn(
+        {
+          structuredAttempt,
+          error: err instanceof Error ? err.message : String(err),
+          chars: raw.length,
+        },
+        'resposta estruturada invalida; solicitando nova geracao',
+      );
     }
   }
 
-  return cleaned;
+  const detail = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(
+    `A IA não conseguiu concluir o resultado em formato válido após duas tentativas. ` +
+      `Tente novamente. Detalhe técnico: ${detail}`,
+  );
 }
 
 function sleep(ms: number) {

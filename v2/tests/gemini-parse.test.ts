@@ -1,33 +1,50 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
+import {
+  cleanGeminiJson,
+  parseGeminiJson,
+  toGeminiResponseSchema,
+} from '@/lib/gemini/structured';
 
-/**
- * Esses testes garantem que a lógica de stripping de fences ```json funciona,
- * sem disparar requisição real. Reimplementamos a função aqui pra evitar
- * import de @/lib/gemini/client (que requer envs).
- */
-
-function stripJsonFences(s: string): string {
-  return s
-    .trim()
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/```\s*$/, '')
-    .trim();
-}
-
-describe('stripJsonFences', () => {
+describe('cleanGeminiJson', () => {
   it('remove fence ```json ... ```', () => {
-    expect(stripJsonFences('```json\n{"a": 1}\n```')).toBe('{"a": 1}');
+    expect(cleanGeminiJson('```json\n{"a": 1}\n```')).toBe('{"a": 1}');
   });
 
-  it('remove fence ``` ... ``` sem language tag', () => {
-    expect(stripJsonFences('```\n{"a": 1}\n```')).toBe('{"a": 1}');
+  it('remove fence sem language tag', () => {
+    expect(cleanGeminiJson('```\n{"a": 1}\n```')).toBe('{"a": 1}');
   });
 
   it('passa JSON cru sem alterar', () => {
-    expect(stripJsonFences('{"a": 1}')).toBe('{"a": 1}');
+    expect(cleanGeminiJson('{"a": 1}')).toBe('{"a": 1}');
   });
 
-  it('lida com espaços extras', () => {
-    expect(stripJsonFences('  ```json  \n{"a":1}\n  ```  ')).toBe('{"a":1}');
+  it('remove texto depois do primeiro JSON completo', () => {
+    expect(parseGeminiJson('{"texto":"chave } interna"}\ncomentario')).toEqual({
+      texto: 'chave } interna',
+    });
+  });
+
+  it('rejeita JSON quebrado internamente para permitir nova geracao', () => {
+    expect(() => parseGeminiJson('{"itens":["a" "b"]}')).toThrow();
+  });
+});
+
+describe('toGeminiResponseSchema', () => {
+  it('converte tipos Zod para o enum da SDK e preserva restricoes', () => {
+    const result = toGeminiResponseSchema(z.object({
+      nome: z.string(),
+      nivel: z.enum(['leve', 'grave']),
+      detalhes: z.string().nullable().default(null),
+    })) as unknown as Record<string, unknown>;
+
+    expect(result.type).toBe('OBJECT');
+    expect(result).not.toHaveProperty('$schema');
+    expect(result).not.toHaveProperty('additionalProperties');
+    expect(result.properties).toMatchObject({
+      nome: { type: 'STRING' },
+      nivel: { type: 'STRING', enum: ['leve', 'grave'] },
+      detalhes: { type: 'STRING', nullable: true },
+    });
   });
 });
