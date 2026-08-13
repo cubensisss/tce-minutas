@@ -13,6 +13,7 @@ import { generateText } from '@/lib/gemini/client';
 import { MinutaSchema, type Minuta } from '@/schemas/minuta';
 import { loadPersonaConfig } from '@/lib/config/persona';
 import { loggerFor } from '@/lib/logger';
+import { saveMinutaVersion } from '@/lib/minuta/versioning';
 
 const log = loggerFor('api/minuta/ajustar');
 
@@ -30,6 +31,8 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
 
   const supabase = await createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   const { data: processo, error } = await supabase
     .from('processos')
     .select('minuta')
@@ -63,6 +66,14 @@ ${parsed.data.instrucao}`,
   });
 
   const novaMinuta: Minuta = { ...minuta.data, [parsed.data.secao]: novoTexto.trim() };
+
+  await saveMinutaVersion(supabase, {
+    processoId: parsed.data.processo_id,
+    ownerId: user.id,
+    minuta: minuta.data,
+    origem: 'ajuste',
+    descricao: `Antes do ajuste em ${parsed.data.secao}: ${parsed.data.instrucao.slice(0, 180)}`,
+  });
 
   const { error: updErr } = await supabase
     .from('processos')

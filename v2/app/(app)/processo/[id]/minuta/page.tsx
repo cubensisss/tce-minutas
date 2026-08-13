@@ -5,6 +5,7 @@ import Link from 'next/link';
 import StepIndicator from '@/components/StepIndicator';
 import ProcessoChat from '@/components/ProcessoChat';
 import { MinutaSchema, type Minuta } from '@/schemas/minuta';
+import JobProgress from '@/components/JobProgress';
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -14,6 +15,7 @@ export default function MinutaPage({ params }: Props) {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [baixando, setBaixando] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(null);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -52,10 +54,18 @@ export default function MinutaPage({ params }: Props) {
     setGenerating(true);
     setError(null);
     try {
+      const jobRes = await fetch('/api/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ processo_id: id, kind: 'minuta' }),
+      });
+      const jobJson = await jobRes.json();
+      const currentJobId: string | null = jobRes.ok ? jobJson.id : null;
+      setJobId(currentJobId);
       const res = await fetch('/api/minuta/gerar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ processo_id: id }),
+        body: JSON.stringify({ processo_id: id, job_id: currentJobId }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? 'falha ao gerar minuta');
@@ -103,8 +113,9 @@ export default function MinutaPage({ params }: Props) {
             </p>
           </div>
           <p className="text-xs text-on-surface-variant mt-3">
-            O Gemini Pro está consultando os documentos brutos, as diretrizes e os precedentes do TCE-PE (Gabinete Rodrigo Novaes).
+            O Gemini Pro está consultando os documentos, as diretrizes e precedentes de todo o TCE-PE, além do acervo do gabinete.
           </p>
+          <JobProgress jobId={jobId} />
         </div>
       </div>
     );
@@ -155,6 +166,13 @@ export default function MinutaPage({ params }: Props) {
           </button>
         </div>
       </header>
+
+      {jobId && (
+        <section className="card">
+          <h2 className="text-sm font-medium">Desempenho da ultima geracao</h2>
+          <JobProgress jobId={jobId} />
+        </section>
+      )}
 
       {error && (
         <div className="card border-error/40 bg-error-container/40 space-y-1">

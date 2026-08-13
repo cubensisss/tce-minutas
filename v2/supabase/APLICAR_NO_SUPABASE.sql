@@ -107,6 +107,9 @@ alter table public.documentos add column if not exists kind text;
 alter table public.documentos add column if not exists filename text;
 alter table public.documentos add column if not exists size_bytes bigint;
 alter table public.documentos add column if not exists content_type text;
+alter table public.documentos add column if not exists extracted_text text;
+alter table public.documentos add column if not exists extracted_via text;
+alter table public.documentos add column if not exists extracted_at timestamptz;
 
 -- Se a tabela vier do v1, backfill kind <- tipo e filename <- nome_arquivo.
 do $$
@@ -168,6 +171,26 @@ create policy documentos_delete_authed on storage.objects
 -- Coluna jsonb simples na própria tabela processos — sem JOIN.
 alter table if exists public.processos
   add column if not exists chat_messages jsonb not null default '[]'::jsonb;
+
+-- =============== 0005 - versoes recuperaveis da minuta =====================
+create table if not exists public.minuta_versoes (
+  id uuid primary key default gen_random_uuid(),
+  processo_id uuid not null references public.processos(id) on delete cascade,
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  origem text not null check (origem in ('geracao', 'ajuste', 'restauracao')),
+  descricao text,
+  minuta jsonb not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists minuta_versoes_processo_created_idx
+  on public.minuta_versoes(processo_id, created_at desc);
+
+alter table public.minuta_versoes enable row level security;
+drop policy if exists "owner_all" on public.minuta_versoes;
+create policy "owner_all" on public.minuta_versoes
+  for all using (auth.uid() = owner_id)
+  with check (auth.uid() = owner_id);
 
 -- =============================================================================
 -- FIM. Rode no SQL Editor do Supabase Studio.

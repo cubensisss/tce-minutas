@@ -8,7 +8,7 @@
  *   - resumo de triagem completo
  *   - diretrizes definidas
  *   - minuta gerada (ementa, relatório, análise, dispositivo)
- *   - top precedentes do Vertex (cacheados)
+ *   - precedentes da fonte oficial do TCE-PE e do acervo do gabinete (cacheados)
  *
  * Nós deliberadamente NÃO incluímos os PDFs brutos (auditoria + defesas)
  * pra manter latência de chat baixa — o resumo agora é detalhado o
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
 
   const history: ChatMessage[] = historyParse.success ? historyParse.data : [];
 
-  // 2. Carrega persona e top precedentes (rápido — vem do cache)
+  // 2. Carrega persona e top precedentes (normalmente rápido por causa do cache)
   const persona = await loadPersonaConfig(supabase);
 
   let precedentesBlock = '(sem precedentes recuperados)';
@@ -191,7 +191,7 @@ ${minutaParse.data.decisao_voto}
 
 ${minutaParse.data.sugestao_pendente ? `### Pontos pendentes\n${minutaParse.data.sugestao_pendente}\n` : ''}
 
-## Precedentes do TCE-PE (Vertex)
+## Precedentes do TCE-PE (fonte oficial e acervo do gabinete)
 ${precedentesBlock}`;
 
   // 4. Monta o prompt do turno como conversa: histórico + nova pergunta

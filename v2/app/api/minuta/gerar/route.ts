@@ -4,7 +4,7 @@
  *  - persona da Conselheira
  *  - resumo + diretrizes
  *  - documentos brutos extraídos do Storage
- *  - precedentes do Vertex AI Search (top 3 cacheados)
+ *  - precedentes oficiais do TCE-PE e do acervo vetorial (cacheados)
  *
  * Body: { processo_id }
  */
@@ -21,27 +21,37 @@ import { buildMinutaSystemPrompt, buildMinutaUserPrompt } from '@/prompts/minuta
 import { loadPersonaConfig } from '@/lib/config/persona';
 import { getCachedOrFetch } from '@/lib/vertex/cache';
 import { loggerFor } from '@/lib/logger';
+import { elapsedMs, updateJobProgress } from '@/lib/jobs/progress';
+import { saveMinutaVersion } from '@/lib/minuta/versioning';
 
 const log = loggerFor('api/minuta/gerar');
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
 
-const Body = z.object({ processo_id: z.string().uuid() });
+const Body = z.object({
+  processo_id: z.string().uuid(),
+  job_id: z.string().uuid().nullable().optional(),
+});
 
 export async function POST(request: NextRequest) {
   const parsed = Body.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
-  const { processo_id } = parsed.data;
+  const { processo_id, job_id } = parsed.data;
 
   const supabase = await createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const totalStarted = performance.now();
+  const timings: Record<string, number> = {};
+  await updateJobProgress(supabase, job_id, {
+    phase: 'contexto', message: 'Validando resumo e diretrizes...', progress: 8, timings,
+  });
 
   // 1. Carrega o estado do processo
   const { data: processo, error: pErr } = await supabase
     .from('processos')
-    .select('id, numero, unidade_jurisdicionada, resumo_data, diretrizes')
+    .select('id, numero, unidade_jurisdicionada, resumo_data, diretrizes, minuta')
     .eq('id', processo_id)
     .single();
   if (pErr || !processo) {
@@ -58,24 +68,36 @@ export async function POST(request: NextRequest) {
   }
 
   // 2. Carrega documentos brutos
+  const docsStarted = performance.now();
+  await updateJobProgress(supabase, job_id, {
+    phase: 'documentos', message: 'Lendo os documentos originais...', progress: 20, timings,
+  });
   const { data: docs } = await supabase
     .from('documentos')
-    .select('kind, storage_path, filename')
+    .select('kind, storage_path, filename, extracted_text')
     .eq('processo_id', processo_id);
 
   const documentosBrutos = await Promise.all(
     (docs ?? [])
       .filter((d) => d.kind === 'relatorio' || d.kind === 'defesa')
       .map(async (d) => {
+        if (typeof d.extracted_text === 'string' && d.extracted_text.trim().length >= 200) {
+          return { filename: d.filename, text: d.extracted_text };
+        }
         const buf = await downloadDocument(supabase, d.storage_path);
         const ext = await extractFromBuffer(buf, d.filename);
         return { filename: d.filename, text: ext.text };
       }),
   );
+  timings.documentos_ms = elapsedMs(docsStarted);
 
   // 3. Carrega persona + busca precedentes
   const persona = await loadPersonaConfig(supabase);
   const queryParaSimilares = buildSimilaresQuery(resumoParse.data);
+  const searchStarted = performance.now();
+  await updateJobProgress(supabase, job_id, {
+    phase: 'precedentes', message: 'Buscando e ordenando precedentes...', progress: 42, timings,
+  });
   const { results: precedentes } = await getCachedOrFetch(supabase, processo_id, {
     query: queryParaSimilares,
     pageSize: 20,
@@ -83,12 +105,17 @@ export async function POST(request: NextRequest) {
     // reais para o modelo citar. Combinado com mais trechos por documento.
     topN: 6,
   });
+  timings.precedentes_ms = elapsedMs(searchStarted);
 
   // 4. Gera com Gemini Pro
   log.info(
     { processo_id, docs: documentosBrutos.length, precedentes: precedentes.length },
     'gerando minuta',
   );
+  const generationStarted = performance.now();
+  await updateJobProgress(supabase, job_id, {
+    phase: 'redacao', message: 'Redigindo e fundamentando a minuta...', progress: 62, timings,
+  });
   const minuta = await generateJson({
     model: 'pro',
     system: buildMinutaSystemPrompt({
@@ -103,6 +130,7 @@ export async function POST(request: NextRequest) {
       tomVoz: persona.tomVoz,
       proibicoes: persona.proibicoes,
       estruturaPadrao: persona.estruturaPadrao,
+      precedentesObrigatorios: persona.precedentesObrigatorios,
       limiteLegalArt73: persona.limiteLegalArt73,
       resumo: resumoParse.data,
       diretrizes: diretrizesParse.data,
@@ -113,6 +141,19 @@ export async function POST(request: NextRequest) {
     temperature: 0.3,
     timeoutMs: 240_000,
     retries: 1,
+  });
+  timings.redacao_ms = elapsedMs(generationStarted);
+
+  await updateJobProgress(supabase, job_id, {
+    phase: 'salvamento', message: 'Validando e salvando o resultado...', progress: 94, timings,
+  });
+
+  await saveMinutaVersion(supabase, {
+    processoId: processo_id,
+    ownerId: user.id,
+    minuta: processo.minuta,
+    origem: 'geracao',
+    descricao: 'Versao anterior preservada antes de regerar a minuta',
   });
 
   // 5. Persiste a minuta
@@ -125,7 +166,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: updErr.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, minuta });
+  timings.total_ms = elapsedMs(totalStarted);
+  await updateJobProgress(supabase, job_id, {
+    phase: 'concluido', message: 'Minuta concluida.', progress: 100, timings,
+  }, 'done');
+
+  return NextResponse.json({ ok: true, minuta, timings });
 }
 
 /**

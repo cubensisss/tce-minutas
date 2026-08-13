@@ -50,6 +50,8 @@ export const FonteSchema = z.object({
    * Para precedentes, é o snippet vindo do Vertex.
    */
   trecho: z.string().nullable().default(null),
+  /** Link oficial para conferencia, quando a fonte for um precedente. */
+  link: z.string().url().nullable().default(null),
 });
 
 export const SugestaoIaSchema = z.object({

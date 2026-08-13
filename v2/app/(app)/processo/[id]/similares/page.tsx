@@ -175,13 +175,24 @@ export default function SimilaresProcessoPage({ params }: Props) {
                       relevância {(r.relevance * 100).toFixed(0)}%
                     </span>
                   )}
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-surface-variant text-on-surface-variant">
+                    {r.source === 'tcepe_oficial' ? 'TCE-PE oficial' : 'Acervo do gabinete'}
+                  </span>
                 </header>
 
+                {(r.processo || r.acordao || r.relator || r.julgamento) && (
+                  <p className="text-xs text-on-surface-variant">
+                    {[
+                      r.processo ? `Processo ${r.processo}` : null,
+                      r.acordao ? `Acordao ${r.acordao}` : null,
+                      r.relator ? `Relator ${r.relator}` : null,
+                      r.julgamento ? new Date(r.julgamento).toLocaleDateString('pt-BR') : null,
+                    ].filter(Boolean).join(' | ')}
+                  </p>
+                )}
+
                 {r.snippet && (
-                  <p
-                    className="text-sm whitespace-pre-line"
-                    dangerouslySetInnerHTML={{ __html: r.snippet }}
-                  />
+                  <p className="text-sm whitespace-pre-line">{r.snippet.replace(/<\/?b>/g, '')}</p>
                 )}
 
                 {/* Bloco: Relação com o processo em análise */}

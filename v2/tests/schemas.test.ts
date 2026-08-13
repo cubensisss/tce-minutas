@@ -47,15 +47,14 @@ describe('ResumoSchema', () => {
 describe('DiretrizesSchema', () => {
   it('aceita diretrizes mínimas (1 achado, sem multas/débitos)', () => {
     const ok = DiretrizesSchema.safeParse({
-      achados: [{ achado_numero: '1.1', resultado: 'procedente' }],
+      achados: [{ achado_numero: '1.1', resultado: 'irregular' }],
     });
     expect(ok.success).toBe(true);
   });
 
-  it('multa com valor negativo é rejeitada', () => {
+  it('rejeita resultado fora das opcoes atuais', () => {
     const bad = DiretrizesSchema.safeParse({
       achados: [{ achado_numero: '1', resultado: 'procedente' }],
-      multas: [{ responsavel: 'X', valor: -10, fundamento: 'art' }],
     });
     expect(bad.success).toBe(false);
   });

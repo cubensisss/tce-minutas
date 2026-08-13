@@ -60,13 +60,7 @@ export default function DiretrizesPage({ params }: Props) {
           };
       setDiretrizes(initial);
 
-      // Já dispara sugestões automáticas para os achados que ainda não têm —
-      // em paralelo, sem bloquear a renderização.
-      initial.achados
-        .filter((a) => !a.sugestao_ia)
-        .forEach((a) => pedirSugestaoIa(a.achado_numero));
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   function updateAchado(numero: string, patch: Partial<DiretrizAchado>) {
@@ -429,7 +423,18 @@ export default function DiretrizesPage({ params }: Props) {
                                 {f.tipo === 'legislacao' ? 'LEI' : 'PRECEDENTE'}
                               </span>
                               <span className="flex-1">
-                                <strong>{f.citacao}</strong>
+                                {f.link ? (
+                                  <a
+                                    href={f.link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="font-semibold underline underline-offset-2"
+                                  >
+                                    {f.citacao}
+                                  </a>
+                                ) : (
+                                  <strong>{f.citacao}</strong>
+                                )}
                                 {f.trecho && (
                                   <span className="block text-[11px] italic text-on-surface-variant">
                                     &ldquo;{f.trecho}&rdquo;

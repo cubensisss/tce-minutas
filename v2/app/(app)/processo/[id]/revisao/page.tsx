@@ -6,6 +6,12 @@ import StepIndicator from '@/components/StepIndicator';
 import { MinutaSchema, type Minuta } from '@/schemas/minuta';
 
 type Props = { params: Promise<{ id: string }> };
+type Versao = {
+  id: string;
+  origem: 'geracao' | 'ajuste' | 'restauracao';
+  descricao: string | null;
+  created_at: string;
+};
 
 type Secao = 'ementa' | 'relatorio' | 'analise_completa' | 'decisao_voto';
 const SECOES: Array<{ key: Secao; label: string }> = [
@@ -22,6 +28,14 @@ export default function RevisaoPage({ params }: Props) {
   const [instrucao, setInstrucao] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [versoes, setVersoes] = useState<Versao[]>([]);
+  const [restoring, setRestoring] = useState<string | null>(null);
+
+  async function loadVersoes() {
+    const res = await fetch(`/api/processo/${id}/versoes`, { cache: 'no-store' });
+    const json = await res.json();
+    if (res.ok) setVersoes(json.versoes ?? []);
+  }
 
   useEffect(() => {
     fetch(`/api/processo/${id}`)
@@ -31,6 +45,8 @@ export default function RevisaoPage({ params }: Props) {
         if (parsed.success) setMinuta(parsed.data);
         else setError('Sem minuta válida — gere a minuta primeiro.');
       });
+    loadVersoes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   async function handleAjustar(e: React.FormEvent) {
@@ -48,10 +64,32 @@ export default function RevisaoPage({ params }: Props) {
       if (!res.ok) throw new Error(j.error ?? 'falha');
       setMinuta(j.minuta);
       setInstrucao('');
+      await loadVersoes();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'erro');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function restaurar(versaoId: string) {
+    if (!confirm('Restaurar esta versao? A minuta atual tambem sera preservada no historico.')) return;
+    setRestoring(versaoId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/processo/${id}/versoes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ versao_id: versaoId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'falha ao restaurar');
+      setMinuta(json.minuta);
+      await loadVersoes();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'erro');
+    } finally {
+      setRestoring(null);
     }
   }
 
@@ -117,6 +155,39 @@ export default function RevisaoPage({ params }: Props) {
           </button>
         </div>
       </form>
+
+      <section className="card space-y-3">
+        <div>
+          <h2 className="font-display text-xl text-primary">Historico de versoes</h2>
+          <p className="text-sm text-on-surface-variant mt-1">
+            Versoes anteriores sao guardadas antes de cada ajuste ou nova geracao.
+          </p>
+        </div>
+        {versoes.length === 0 ? (
+          <p className="text-sm text-on-surface-variant">Ainda nao ha versoes anteriores.</p>
+        ) : (
+          <div className="divide-y divide-outline-variant">
+            {versoes.map((v) => (
+              <div key={v.id} className="py-3 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">
+                    {new Date(v.created_at).toLocaleString('pt-BR')} - {v.origem}
+                  </p>
+                  {v.descricao && <p className="text-xs text-on-surface-variant mt-1">{v.descricao}</p>}
+                </div>
+                <button
+                  type="button"
+                  className="btn-ghost text-xs"
+                  disabled={restoring === v.id}
+                  onClick={() => restaurar(v.id)}
+                >
+                  {restoring === v.id ? 'Restaurando...' : 'Restaurar'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {SECOES.map((s) => (
         <section key={s.key} className="card">

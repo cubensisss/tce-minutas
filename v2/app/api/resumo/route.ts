@@ -16,6 +16,7 @@ import { generateJson } from '@/lib/gemini/client';
 import { ResumoSchema } from '@/schemas/resumo';
 import { buildResumoSystemPrompt, buildResumoUserPrompt } from '@/prompts/resumo';
 import { loggerFor } from '@/lib/logger';
+import { elapsedMs, updateJobProgress } from '@/lib/jobs/progress';
 
 const log = loggerFor('api/resumo');
 
@@ -24,7 +25,10 @@ export const runtime = 'nodejs';
 // relatórios grandes; subimos o teto para acomodar fallback + Flash final.
 export const maxDuration = 300;
 
-const Body = z.object({ processo_id: z.string().uuid() });
+const Body = z.object({
+  processo_id: z.string().uuid(),
+  job_id: z.string().uuid().nullable().optional(),
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,10 +41,17 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
+    const totalStarted = performance.now();
+    const timings: Record<string, number> = {};
+    const jobId = parsed.data.job_id;
+    await updateJobProgress(supabase, jobId, {
+      phase: 'documentos', message: 'Localizando os documentos...', progress: 8, timings,
+    });
+
   // 1. Carrega documentos do processo
   const { data: docs, error: docErr } = await supabase
     .from('documentos')
-    .select('kind, storage_path, filename')
+    .select('id, kind, storage_path, filename')
     .eq('processo_id', parsed.data.processo_id);
   if (docErr) return NextResponse.json({ error: docErr.message }, { status: 500 });
 
@@ -55,6 +66,10 @@ export async function POST(request: NextRequest) {
   log.info({ processo_id: parsed.data.processo_id, defesas: defesasDocs.length }, 'iniciando extração');
 
   const MIN_CHARS = 200;
+  const extractionStarted = performance.now();
+  await updateJobProgress(supabase, jobId, {
+    phase: 'extracao', message: 'Extraindo texto do relatorio e das defesas...', progress: 22, timings,
+  });
 
   /**
    * Tenta extração textual; se vier vazio, faz OCR via Gemini Flash.
@@ -134,13 +149,28 @@ export async function POST(request: NextRequest) {
     defesasDocs.map(async (d) => {
       try {
         const r = await extractWithFallback(d.storage_path, d.filename, false);
-        return { filename: d.filename, text: r.text, usedOcr: r.usedOcr };
+        return { id: d.id, filename: d.filename, text: r.text, usedOcr: r.usedOcr };
       } catch (err) {
         log.warn({ err, filename: d.filename }, 'falha ao extrair defesa, ignorando');
-        return { filename: d.filename, text: '', usedOcr: false };
+        return { id: d.id, filename: d.filename, text: '', usedOcr: false };
       }
     }),
   );
+
+  // Persiste o texto uma unica vez. A geracao da minuta passa a reutilizar
+  // inclusive o OCR, evitando reler PDFs e perder documentos escaneados.
+  await Promise.all([
+    supabase.from('documentos').update({
+      extracted_text: relText.text,
+      extracted_via: relText.usedOcr ? 'gemini_ocr' : 'text_parser',
+      extracted_at: new Date().toISOString(),
+    }).eq('id', relatorio.id),
+    ...defesasText.map((d) => supabase.from('documentos').update({
+      extracted_text: d.text || null,
+      extracted_via: d.usedOcr ? 'gemini_ocr' : 'text_parser',
+      extracted_at: new Date().toISOString(),
+    }).eq('id', d.id)),
+  ]);
 
   // Filtra defesas vazias antes de mandar pro Gemini — defesa que ficou
   // sem texto mesmo após OCR não derruba o resumo (o relatório basta).
@@ -149,6 +179,11 @@ export async function POST(request: NextRequest) {
     .map((d) => ({ filename: d.filename, text: d.text }));
 
   // 3. Gemini Flash → JSON validado
+  timings.extracao_ocr_ms = elapsedMs(extractionStarted);
+  const summaryStarted = performance.now();
+  await updateJobProgress(supabase, jobId, {
+    phase: 'triagem_ia', message: 'Estruturando fatos, achados e defesas...', progress: 62, timings,
+  });
   const resumo = await generateJson({
     model: 'flash',
     system: buildResumoSystemPrompt(),
@@ -167,6 +202,7 @@ export async function POST(request: NextRequest) {
   // Como o /novo agora aceita só os arquivos, número/unidade vinham com
   // placeholders ("(extraindo...)"). Sobrescrevemos sempre que a triagem
   // entregar um valor válido.
+  timings.triagem_ia_ms = elapsedMs(summaryStarted);
   const numeroExtraido = resumo.processo.numero?.trim();
   const unidadeExtraida = resumo.processo.unidade_jurisdicionada?.trim();
 
@@ -191,7 +227,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: updErr.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, resumo });
+  timings.total_ms = elapsedMs(totalStarted);
+  await updateJobProgress(supabase, jobId, {
+    phase: 'concluido', message: 'Resumo de triagem concluido.', progress: 100, timings,
+  }, 'done');
+  return NextResponse.json({ ok: true, resumo, timings });
   } catch (err) {
     log.error({ err }, 'erro não tratado em /api/resumo');
     return NextResponse.json(
