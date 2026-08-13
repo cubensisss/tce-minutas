@@ -8,11 +8,11 @@
  * Roda em Gemini Pro (raciocínio profundo) com:
  *   - persona completa (com Lei 12.600/04 art. 73 e suas faixas)
  *   - resumo do processo (achados, defesas)
- *   - top precedentes do Vertex (cache do processo) — quando aderentes
+ *   - precedentes oficiais do TCE-PE e do acervo vetorial do gabinete
  *
  * Cada sugestão DEVE vir com pelo menos uma fonte: legislação (artigo +
  * inciso + parágrafo) ou precedente (com citação literal do trecho do
- * documento retornado pelo Vertex). Sem fonte, retorna null.
+ * documento recuperado). Sem fonte, retorna null.
  *
  * Body: { processo_id, achado_numero }
  * Resp: { sugestao: SugestaoIa }
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
   const persona = await loadPersonaConfig(supabase);
 
-  // Busca precedentes do Vertex (cache do processo). Se falhar, segue sem.
+  // Busca híbrida cacheada. Se as duas fontes falharem, segue sem precedentes.
   let precedentesBlock = '(sem precedentes recuperados)';
   try {
     const query = `${achado.titulo} | ${achado.descricao.slice(0, 200)}`;
@@ -81,12 +81,19 @@ export async function POST(request: NextRequest) {
     });
     if (results.length > 0) {
       precedentesBlock = results
-        .map(
-          (p, i) =>
-            `### Precedente ${i + 1}${p.title ? ` — ${p.title}` : ''}
+        .map((p, i) => {
+          const metadados = [
+            p.processo ? `Processo: ${p.processo}` : null,
+            p.acordao ? `Acórdão: ${p.acordao}` : null,
+            p.relator ? `Relator(a): ${p.relator}` : null,
+            p.julgamento ? `Julgamento: ${p.julgamento}` : null,
+            p.source ? `Fonte: ${p.source}` : null,
+          ].filter(Boolean).join('\n');
+          return `### Precedente ${i + 1}${p.title ? ` — ${p.title}` : ''}
+${metadados}
 Trecho: ${(p.snippet ?? '').replace(/<\/?b>/g, '').slice(0, 500) || '(sem trecho)'}
-Link: ${p.link ?? 'n/a'}`,
-        )
+Link oficial: ${p.link ?? 'n/a'}`;
+        })
         .join('\n\n');
     }
   } catch (err) {
@@ -126,6 +133,8 @@ REGRAS DE FONTE (OBRIGATÓRIAS):
   PRECEDENTES JURISPRUDENCIAIS abaixo. NUNCA inventar processo,
   número, conselheiro ou data. Em "citacao" use o título exatamente
   como veio; em "trecho" copie literalmente o snippet.
+- Em fonte de tipo "precedente", copie também o "Link oficial" para
+  "link". Para legislação ou precedente sem link, use null.
 - NUNCA use "votos anteriores do relator" como fonte SEM que esteja
   literalmente nos PRECEDENTES abaixo.
 - Se não houver fonte legítima, retorne aquele campo como null.
@@ -140,7 +149,8 @@ REGRAS DE FONTE (OBRIGATÓRIAS):
     {
       "tipo": "legislacao" | "precedente",
       "citacao": "string — citação completa",
-      "trecho": "string|null — texto literal do dispositivo ou snippet"
+      "trecho": "string|null — texto literal do dispositivo ou snippet",
+      "link": "string|null — URL oficial do precedente"
     }
   ]
 }`;

@@ -69,4 +69,10 @@ export type SimilarResult = {
    * o data store atual não expõe campo de data.
    */
   relevance: number | null;
+  /** Origem do resultado: portal oficial amplo ou acervo vetorial do gabinete. */
+  source?: 'tcepe_oficial' | 'vertex_gabinete';
+  processo?: string | null;
+  acordao?: string | null;
+  relator?: string | null;
+  julgamento?: string | null;
 };

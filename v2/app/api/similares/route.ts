@@ -1,15 +1,15 @@
 /**
  * GET /api/similares?processo_id=...&q=...
- * Busca processos similares no Vertex AI. Se processo_id vier sem `q`,
+ * Busca processos similares na jurisprudência oficial e no acervo vetorial. Se processo_id vier sem `q`,
  * usa o resumo do processo como query. Resultado vem do cache (TTL 7d) ou
- * do Vertex direto.
+ * da busca híbrida.
  *
  * Single endpoint pra duas necessidades: aba global de busca livre e
  * aba "similares" dentro do processo.
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
-import { searchSimilarProcesses } from '@/lib/vertex/search';
+import { searchHybrid } from '@/lib/search/hybrid';
 import { getCachedOrFetch } from '@/lib/vertex/cache';
 import { ResumoSchema } from '@/schemas/resumo';
 import { loggerFor } from '@/lib/logger';
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   // Caso 1: busca livre (sem processo)
   if (!processoId) {
     if (!q) return NextResponse.json({ error: 'missing_query' }, { status: 400 });
-    const results = await searchSimilarProcesses({ query: q, topN: Math.min(topN, 10) });
+    const results = await searchHybrid({ query: q, topN: Math.min(topN, 10) });
     return NextResponse.json({ results, cached: false });
   }
 

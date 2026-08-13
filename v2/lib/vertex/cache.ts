@@ -1,10 +1,11 @@
 /**
- * Cache de buscas no Vertex AI por processo. TTL controlado pela coluna
+ * Cache da busca híbrida de jurisprudência por processo. TTL controlado pela coluna
  * expires_at (default 7 dias). Evita gastar quota e acelera a aba de
  * similares quando o usuário só atualiza a página.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { hashQuery, searchSimilarProcesses, type SearchOptions } from './search';
+import { hashQuery, type SearchOptions } from './search';
+import { searchHybrid } from '@/lib/search/hybrid';
 import type { SimilarResult } from '@/lib/types/database';
 import { loggerFor } from '@/lib/logger';
 
@@ -15,7 +16,7 @@ export async function getCachedOrFetch(
   processoId: string,
   opts: SearchOptions,
 ): Promise<{ results: SimilarResult[]; cached: boolean }> {
-  const queryHash = hashQuery(opts.query);
+  const queryHash = hashQuery(`${opts.query}|top:${opts.topN ?? 3}|hybrid:v1`);
 
   const { data: existing, error } = await supabase
     .from('similares_cache')
@@ -32,7 +33,7 @@ export async function getCachedOrFetch(
     return { results: existing.results as SimilarResult[], cached: true };
   }
 
-  const results = await searchSimilarProcesses(opts);
+  const results = await searchHybrid(opts);
 
   // Upsert (única chave: processo_id + query_hash)
   const { error: upsertErr } = await supabase

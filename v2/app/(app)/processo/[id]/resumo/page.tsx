@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import StepIndicator from '@/components/StepIndicator';
 import { ResumoSchema, type Resumo } from '@/schemas/resumo';
+import JobProgress from '@/components/JobProgress';
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -14,6 +15,7 @@ export default function ResumoPage({ params }: Props) {
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
 
   // Auto-trigger se não existir resumo ainda
   useEffect(() => {
@@ -31,10 +33,18 @@ export default function ResumoPage({ params }: Props) {
           return;
         }
         // Não tem resumo — gera agora
+        const jobRes = await fetch('/api/jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ processo_id: id, kind: 'resumo' }),
+        });
+        const jobJson = await jobRes.json();
+        const currentJobId: string | null = jobRes.ok ? jobJson.id : null;
+        if (!cancelled) setJobId(currentJobId);
         const gen = await fetch('/api/resumo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ processo_id: id }),
+          body: JSON.stringify({ processo_id: id, job_id: currentJobId }),
         });
         const genJson = await gen.json();
         if (!gen.ok) throw new Error(genJson.error ?? 'falha ao gerar resumo');
@@ -67,6 +77,7 @@ export default function ResumoPage({ params }: Props) {
           <p className="text-xs text-on-surface-variant mt-3">
             Isso pode levar até 90 segundos para processos grandes.
           </p>
+          <JobProgress jobId={jobId} />
         </div>
       </div>
     );
@@ -101,6 +112,13 @@ export default function ResumoPage({ params }: Props) {
           Processo {resumo.processo.numero} — {resumo.processo.unidade_jurisdicionada}
         </p>
       </header>
+
+      {jobId && (
+        <section className="card">
+          <h2 className="text-sm font-medium">Desempenho da triagem</h2>
+          <JobProgress jobId={jobId} />
+        </section>
+      )}
 
       <section className="card space-y-4">
         <h2 className="font-display text-xl text-primary">Identificação</h2>

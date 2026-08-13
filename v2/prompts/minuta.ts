@@ -7,7 +7,7 @@
  *   1. SYSTEM: persona + tom + proibições + estrutura padrão
  *   2. CONTEXTO ESTRUTURADO: resumo + diretrizes
  *   3. CONTEXTO BRUTO: textos completos do relatório e das defesas
- *   4. PRECEDENTES: top-N do Vertex
+ *   4. PRECEDENTES: top-N da busca híbrida (fonte oficial + acervo do gabinete)
  */
 import type { Resumo } from '@/schemas/resumo';
 import type { Diretrizes } from '@/schemas/diretrizes';
@@ -19,6 +19,8 @@ export type BuildMinutaInput = {
   tomVoz: string;
   proibicoes: string;
   estruturaPadrao: string;
+  /** Precedentes ou entendimentos que devem ser considerados em toda minuta. */
+  precedentesObrigatorios: string;
   /** Valor bruto (apenas dígitos) do limite legal vigente do art. 73. */
   limiteLegalArt73: string;
   resumo: Resumo;
@@ -115,6 +117,14 @@ ${docsBlock}
 #   para enriquecer a Análise do Relator do achado correspondente.
 # - Use um precedente apenas no achado a que ele for materialmente aderente.
 ${precedentesBlock}
+
+# PRECEDENTES OBRIGATORIOS CONFIGURADOS PELA CONSELHEIRA
+${input.precedentesObrigatorios.trim() || '(nenhum precedente obrigatorio configurado)'}
+
+Considere este bloco como orientacao expressa da Conselheira. Ainda assim,
+nao invente numeros, trechos ou metadados: quando a configuracao nao trouxer
+elementos suficientes para uma citacao nominal segura, use apenas a tese
+juridica e registre a necessidade de conferencia em "sugestao_pendente".
 
 # INSTRUÇÕES PARA A EMENTA
 ESCREVA a EMENTA do caso fornecido, seguindo estritamente a ESTRUTURA abaixo. Cite apenas fatos, normas e precedentes do caso fornecido. Comece o texto com "Ementa:".
