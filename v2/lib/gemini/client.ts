@@ -70,7 +70,23 @@ export async function generateText(opts: GenerateOptions): Promise<string> {
 
         const text = response.text ?? '';
         if (!text) throw new Error('Gemini retornou resposta vazia');
-        log.debug({ model: modelName, chars: text.length, attempt }, 'gemini ok');
+        const finishReason = response.candidates?.[0]?.finishReason ?? null;
+        const usage = response.usageMetadata;
+        const metadata = {
+          model: modelName,
+          chars: text.length,
+          attempt,
+          finishReason,
+          promptTokens: usage?.promptTokenCount,
+          outputTokens: usage?.candidatesTokenCount,
+          thinkingTokens: usage?.thoughtsTokenCount,
+          totalTokens: usage?.totalTokenCount,
+        };
+        if (finishReason === 'MAX_TOKENS') {
+          log.warn(metadata, 'gemini interrompeu a resposta por limite de tokens');
+        } else {
+          log.debug(metadata, 'gemini ok');
+        }
         return text;
       } finally {
         clearTimeout(t);

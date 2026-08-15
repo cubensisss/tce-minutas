@@ -192,10 +192,12 @@ export async function POST(request: NextRequest) {
       defesas: defesasValidas,
     }),
     schema: ResumoSchema,
-    timeoutMs: 120_000,
+    timeoutMs: 240_000,
     // Resumo agora é detalhado (narrativa + dados objetivos + defesa completa)
     // — precisa de orçamento de saída maior pra não cortar achados longos.
-    maxOutputTokens: 16_000,
+    // O Gemini 2.5 Flash pode gastar parte do limite com raciocinio interno.
+    // Usar o teto do modelo evita cortar o JSON no meio de um campo textual.
+    maxOutputTokens: 65_536,
   });
 
   // 4. Salva no banco — atualiza metadados que vieram do relatório.
