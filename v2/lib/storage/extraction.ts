@@ -110,10 +110,7 @@ export function formatArtifactForPrompt(artifact: ExtractionArtifact): string {
 }
 
 export function quoteExistsInArtifact(quote: string, artifact: ExtractionArtifact): boolean {
-  const needle = normalizeForMatch(quote);
-  return needle.length >= 8 && artifact.locators.some(
-    (locator) => normalizeForMatch(locator.text).includes(needle),
-  );
+  return artifact.locators.some((locator) => textContainsQuote(locator.text, quote));
 }
 
 export function locatorContainsQuote(
@@ -122,16 +119,36 @@ export function locatorContainsQuote(
   type: 'page' | 'paragraph' | 'document',
   number: number | null,
 ): boolean {
-  const needle = normalizeForMatch(quote);
   return artifact.locators.some((locator) =>
     locator.type === type && locator.number === number &&
-    normalizeForMatch(locator.text).includes(needle),
+    textContainsQuote(locator.text, quote),
   );
 }
 
+/** Tolera somente diferenças de formatação comuns na extração de PDFs. */
+export function textContainsQuote(text: string, quote: string): boolean {
+  const needle = normalizeForMatch(quote);
+  const haystack = normalizeForMatch(text);
+  if (needle.length >= 8 && haystack.includes(needle)) return true;
+
+  const compactNeedle = compactForMatch(needle);
+  const compactHaystack = compactForMatch(haystack);
+  return compactNeedle.length >= 20 && compactHaystack.includes(compactNeedle);
+}
+
 function normalizeForMatch(value: string): string {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, ' ').replace(/[“”]/g, '"').trim().toLowerCase();
+  return value
+    .replace(/([\p{L}\p{N}])-\s*\r?\n\s*([\p{L}\p{N}])/gu, '$1$2')
+    .replace(/[\u00ad\u200b-\u200d\ufeff]/g, '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[“”„‟«»]/g, '"')
+    .replace(/[‘’‚‛]/g, "'")
+    .replace(/[–—−]/g, '-')
+    .replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function compactForMatch(value: string): string {
+  return value.replace(/[^a-z0-9]/g, '');
 }
 
 function paragraphs(text: string): string[] {

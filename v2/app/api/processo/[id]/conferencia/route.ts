@@ -90,7 +90,9 @@ export async function POST(request: NextRequest, { params }: Ctx) {
       ...loaded.resumo,
       evidencias: loaded.resumo.evidencias.map((item) => ({
         ...item,
-        confirmed_by_user: item.verification !== 'invalid' && evidenceIds.has(item.id),
+        confirmed_by_user: item.verification === 'invalid'
+          ? item.confirmed_by_user
+          : evidenceIds.has(item.id),
       })),
     };
     const minuta: Minuta = {

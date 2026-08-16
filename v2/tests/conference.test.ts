@@ -83,6 +83,20 @@ describe('conferência verificável', () => {
     expect(generationContextHash(resumo, diretrizes)).toBe(before);
   });
 
+  it('aceita a conferência humana quando a comparação automática falha', () => {
+    const { resumo, diretrizes, minuta } = state();
+    resumo.evidencias[0]!.verification = 'invalid';
+    resumo.evidencias[0]!.confirmed_by_user = true;
+    const hash = generationContextHash(resumo, diretrizes);
+    const report = buildConferenceReport({
+      resumo, diretrizes, minuta,
+      resumoConfirmedAt: '2026-01-01', diretrizesConfirmedAt: '2026-01-01',
+      minutaStatus: 'draft', storedContextHash: hash, currentContextHash: hash,
+    });
+    expect(report.checks.find((check) => check.id === 'evidencias_validas')?.ok).toBe(true);
+    expect(report.checks.find((check) => check.id === 'evidencias_confirmadas')?.ok).toBe(true);
+  });
+
   it('recusa DOCX antes da aprovação e após qualquer alteração do hash', () => {
     const { resumo, diretrizes, minuta } = state();
     const contextHash = generationContextHash(resumo, diretrizes);

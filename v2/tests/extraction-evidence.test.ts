@@ -33,4 +33,20 @@ describe('localização das fontes', () => {
     expect(parseOcrPages('--- PÁGINA 1 ---\nA\n--- PÁGINA 2 ---\nB')).toEqual(['A', 'B']);
     expect(parseOcrPages('texto sem página segura')).toEqual([]);
   });
+
+  it('tolera hifenização, quebras e pontuação alteradas pela extração do PDF', () => {
+    const artifact = buildExtractionArtifact({
+      documentId, filename: 'relatorio.pdf',
+      extracted: {
+        filename: 'relatorio.pdf',
+        text: 'A contra-\ntação alcançou o valor de R$ 10.000,00 — conforme o relatório.',
+        pages: ['A contra-\ntação alcançou o valor de R$ 10.000,00 — conforme o relatório.'],
+        charCount: 72, warnings: [],
+      },
+    });
+    expect(locatorContainsQuote(
+      'A contratação alcançou o valor de R$ 10.000,00, conforme o relatório.',
+      artifact, 'page', 1,
+    )).toBe(true);
+  });
 });

@@ -74,15 +74,15 @@ export function buildConferenceReport(input: {
     ok: factsCovered,
   });
 
-  const invalidEvidence = input.resumo.evidencias.filter((item) => item.verification === 'invalid');
-  const pendingEvidence = input.resumo.evidencias.filter((item) =>
-    item.verification !== 'invalid' && !item.confirmed_by_user,
+  const invalidEvidence = input.resumo.evidencias.filter((item) =>
+    item.verification === 'invalid' && !item.confirmed_by_user,
   );
+  const pendingEvidence = input.resumo.evidencias.filter((item) => !item.confirmed_by_user);
   add({
     id: 'evidencias_validas', group: 'documentos', label: 'Trechos encontrados nos documentos',
     detail: invalidEvidence.length === 0
       ? `${input.resumo.evidencias.length} evidências localizadas.`
-      : `${invalidEvidence.length} evidência(s) não foram encontradas no local indicado.`,
+      : `${invalidEvidence.length} evidência(s) não tiveram correspondência automática nem confirmação humana.`,
     ok: input.resumo.evidencias.length > 0 && invalidEvidence.length === 0,
   });
   add({

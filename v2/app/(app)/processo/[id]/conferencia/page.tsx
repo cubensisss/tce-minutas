@@ -268,8 +268,8 @@ function ReferenceList({ resumo, minuta }: { resumo: Resumo; minuta: Minuta }) {
 
 function SourceState({ verified, confirmed }: { verified: boolean; confirmed: boolean }) {
   return (
-    <span className={`status-chip ${!verified ? 'status-error' : confirmed ? 'status-success' : 'status-warning'}`}>
-      {!verified ? 'Inválida' : confirmed ? 'Confirmada' : 'Pendente'}
+    <span className={`status-chip ${confirmed ? 'status-success' : !verified ? 'status-error' : 'status-warning'}`}>
+      {confirmed ? 'Confirmada' : !verified ? 'Sem correspondência automática' : 'Pendente'}
     </span>
   );
 }

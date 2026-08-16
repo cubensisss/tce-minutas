@@ -83,6 +83,13 @@ export default function ResumoPage({ params }: Props) {
       });
       const json = await response.json();
       if (!response.ok) {
+        if (json.error === 'fontes_incompletas') {
+          const pending = json.details?.sem_correspondencia_automatica_e_nao_confirmadas ?? 0;
+          throw new Error(
+            `${pending} fonte(s) precisam de conferência manual. ` +
+            'Abra “Fontes documentais”, confira o trecho no arquivo e marque a confirmação correspondente.',
+          );
+        }
         const detail = json.details ? ` ${JSON.stringify(json.details)}` : '';
         throw new Error(`${json.error ?? 'falha ao salvar'}${detail}`);
       }
@@ -106,6 +113,18 @@ export default function ResumoPage({ params }: Props) {
     }));
   }
 
+  function setEvidenceConfirmation(evidenceId: string, confirmed: boolean) {
+    const update = (current: Resumo | null) => current && ({
+      ...current,
+      evidencias: current.evidencias.map((evidence) =>
+        evidence.id === evidenceId ? { ...evidence, confirmed_by_user: confirmed } : evidence),
+    });
+    setResumo(update);
+    setDraft(update);
+    setConfirmedAt(null);
+    setError(null);
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -126,7 +145,7 @@ export default function ResumoPage({ params }: Props) {
     );
   }
 
-  if (error) {
+  if (error && !resumo) {
     return (
       <div className="space-y-6">
         <StepIndicator currentStep={2} />
@@ -162,6 +181,13 @@ export default function ResumoPage({ params }: Props) {
           </button>
         </div>
       </header>
+
+      {error && (
+        <div className="card notice-error" role="alert">
+          <h2 className="font-semibold">Pendência ao confirmar o resumo</h2>
+          <p className="text-sm mt-1">{error}</p>
+        </div>
+      )}
 
       {editing && draft && (
         <ResumoEditor
@@ -322,22 +348,46 @@ export default function ResumoPage({ params }: Props) {
         {resumo.evidencias.length === 0 ? (
           <p className="notice-warning">Este é um resumo legado ou sem fontes. Refaça a triagem antes da conferência final.</p>
         ) : (
-          <div className="grid gap-3 md:grid-cols-2">
-            {resumo.evidencias.map((evidence) => (
+          <>
+            <div className="rounded-xl bg-primary-container/35 p-4 text-sm space-y-1">
+              <p><strong>Correspondência automática:</strong> o trecho foi encontrado no documento e no local indicado.</p>
+              <p><strong>Revisão manual:</strong> o trecho foi encontrado, mas a página/parágrafo precisa ser conferido.</p>
+              <p><strong>Sem correspondência automática:</strong> o comparador não reconheceu o trecho; isso não significa que ele não exista.</p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {resumo.evidencias.map((evidence) => (
               <article key={evidence.id} className="source-card">
                 <div className="flex items-center justify-between gap-3">
                   <strong className="text-sm">{evidence.filename}</strong>
-                  <span className={`status-chip ${evidence.verification === 'invalid' ? 'status-error' : evidence.verification === 'verified' ? 'status-success' : 'status-warning'}`}>
-                    {evidence.verification === 'verified' ? 'localizada' : evidence.verification === 'invalid' ? 'não localizada' : 'conferir'}
+                  <span className={`status-chip ${evidence.confirmed_by_user || evidence.verification === 'verified' ? 'status-success' : evidence.verification === 'invalid' ? 'status-error' : 'status-warning'}`}>
+                    {evidence.confirmed_by_user
+                      ? 'Confirmada manualmente'
+                      : evidence.verification === 'verified'
+                        ? 'Correspondência automática'
+                        : evidence.verification === 'invalid'
+                          ? 'Sem correspondência automática'
+                          : 'Revisão manual'}
                   </span>
                 </div>
                 <p className="text-xs text-on-surface-variant mt-1">
                   {evidence.locator_type === 'page' ? 'Página' : evidence.locator_type === 'paragraph' ? 'Parágrafo' : 'Documento'} {evidence.locator_start ?? ''}
                 </p>
                 <blockquote className="mt-3 text-sm">“{evidence.quote}”</blockquote>
+                {evidence.verification !== 'verified' && (
+                  <label className="mt-4 pt-3 border-t border-outline-variant flex items-start gap-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 accent-primary"
+                      checked={evidence.confirmed_by_user}
+                      onChange={(event) => setEvidenceConfirmation(evidence.id, event.target.checked)}
+                    />
+                    <span>Encontrei este trecho no documento e confirmo a referência.</span>
+                  </label>
+                )}
               </article>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         )}
       </section>
 

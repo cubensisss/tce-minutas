@@ -34,7 +34,9 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   const resumo = verifyResumoEvidence(parsed.data.resumo, artifacts);
 
   if (parsed.data.confirm) {
-    const invalid = resumo.evidencias.filter((item) => item.verification === 'invalid');
+    const invalid = resumo.evidencias.filter((item) =>
+      item.verification === 'invalid' && !item.confirmed_by_user,
+    );
     const facts = resumo.achados.flatMap((achado) => achado.fatos_apurados);
     const referenced = resumo.achados.flatMap((achado) => achado.fatos_referenciados);
     const evidenceIds = new Set(resumo.evidencias.map((item) => item.id));
@@ -47,7 +49,7 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
         error: 'fontes_incompletas',
         details: {
           evidencias: resumo.evidencias.length,
-          invalidas: invalid.length,
+          sem_correspondencia_automatica_e_nao_confirmadas: invalid.length,
           fatos: facts.length,
           referenciados: referenced.length,
           fatos_sem_fonte: uncovered,
