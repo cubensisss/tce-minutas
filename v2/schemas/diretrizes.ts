@@ -1,11 +1,9 @@
 /**
- * Diretrizes que a Conselheira define ANTES da geração da minuta.
+ * Diretrizes propostas pela IA e confirmadas pela Conselheira ANTES da minuta.
  *
- * Padrão v1 simplificado: para CADA achado, escolha o resultado e marque
- * (opcionalmente) multa, débito e/ou medida com seus respectivos valores
- * livres. O resultado é DEFINITIVO — a IA respeita literalmente. Já em
- * multa/débito/medida, a IA pode escrever uma "sugestao_ia" como nota
- * paralela com proposta alternativa para revisão rápida pela Conselheira.
+ * Para CADA achado, a IA propõe resultado, multa, débito e medida com a
+ * fundamentação correspondente. A proposta só se torna diretriz definitiva
+ * depois da concordância humana expressa.
  */
 import { z } from 'zod';
 
@@ -34,8 +32,8 @@ export const MedidaSchema = z.object({
 });
 
 /**
- * Sugestão alternativa gerada pela IA. Não é vinculante — a Conselheira
- * decide. Mostrada como nota lateral na UI.
+ * Proposta de julgamento gerada pela IA. Não é vinculante até a confirmação
+ * humana e permanece visível com a fundamentação na interface.
  *
  * Cada sugestão DEVE vir acompanhada da sua fonte (legislação ou precedente)
  * — sem fonte, a sugestão não é confiável.
@@ -53,11 +51,12 @@ export const FonteSchema = z.object({
    * Para precedentes, é o snippet vindo do Vertex.
    */
   trecho: z.string().nullable().default(null),
-  /** Link oficial para conferencia, quando a fonte for um precedente. */
+  /** Link oficial para conferência da legislação ou do precedente. */
   link: z.string().url().nullable().default(null),
 });
 
 export const SugestaoIaSchema = z.object({
+  resultado: ResultadoAchadoEnum.nullable().default(null),
   multa: z.string().nullable().default(null),
   debito: z.string().nullable().default(null),
   medida: z.string().nullable().default(null),
@@ -65,8 +64,16 @@ export const SugestaoIaSchema = z.object({
   fontes: z.array(FonteSchema).default([]),
 });
 
+/** Resposta nova da IA: o resultado é obrigatório na proposta de julgamento. */
+export const PropostaJulgamentoIaSchema = SugestaoIaSchema.extend({
+  resultado: ResultadoAchadoEnum,
+  fontes: z.array(FonteSchema).min(1),
+});
+
 export const DiretrizAchadoSchema = z.object({
   achado_numero: z.string(),
+  /** Confirmação humana da proposta completa de julgamento deste achado. */
+  confirmado: z.boolean().default(false),
   /** Resultado pendente enquanto null; a geração fica bloqueada. */
   resultado: ResultadoAchadoEnum.nullable().default(null),
   multa: MultaSchema.default({ confirmado: false, aplicar: false, valor: '' }),
@@ -84,3 +91,4 @@ export const DiretrizesSchema = z.object({
 export type Diretrizes = z.infer<typeof DiretrizesSchema>;
 export type DiretrizAchado = z.infer<typeof DiretrizAchadoSchema>;
 export type SugestaoIa = z.infer<typeof SugestaoIaSchema>;
+export type PropostaJulgamentoIa = z.infer<typeof PropostaJulgamentoIaSchema>;

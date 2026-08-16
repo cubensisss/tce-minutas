@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useCallback, useEffect, useRef, useState, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import StepIndicator from '@/components/StepIndicator';
 import { ResumoSchema, type Resumo } from '@/schemas/resumo';
 import {
   DiretrizesSchema,
+  PropostaJulgamentoIaSchema,
   type Diretrizes,
   type DiretrizAchado,
+  type PropostaJulgamentoIa,
 } from '@/schemas/diretrizes';
 
 type Props = { params: Promise<{ id: string }> };
@@ -19,6 +21,33 @@ const RESULTADOS = [
   { v: 'regular', label: 'Regular' },
 ] as const;
 
+function aplicarProposta(
+  achado: DiretrizAchado,
+  proposta: PropostaJulgamentoIa,
+): DiretrizAchado {
+  return {
+    ...achado,
+    confirmado: false,
+    resultado: proposta.resultado,
+    multa: {
+      confirmado: false,
+      aplicar: proposta.multa !== null,
+      valor: proposta.multa ?? '',
+    },
+    debito: {
+      confirmado: false,
+      imputar: proposta.debito !== null,
+      valor: proposta.debito ?? '',
+    },
+    medida: {
+      confirmado: false,
+      aplicar: proposta.medida !== null,
+      texto: proposta.medida ?? '',
+    },
+    sugestao_ia: proposta,
+  };
+}
+
 export default function DiretrizesPage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
@@ -28,8 +57,44 @@ export default function DiretrizesPage({ params }: Props) {
   // múltiplos achados podem estar com sugestão em andamento em paralelo
   const [suggesting, setSuggesting] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const requestedRef = useRef<Set<string>>(new Set());
+  const initializedRef = useRef(false);
+
+  const pedirSugestaoIa = useCallback(async (numero: string) => {
+    if (requestedRef.current.has(numero)) return;
+    requestedRef.current.add(numero);
+    setSuggesting((s) => new Set(s).add(numero));
+    setError(null);
+    try {
+      const res = await fetch('/api/diretrizes/sugerir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ processo_id: id, achado_numero: numero }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error ?? 'falha ao sugerir');
+      const proposta = PropostaJulgamentoIaSchema.parse(j.sugestao);
+      setDiretrizes((d) => d && {
+        ...d,
+        achados: d.achados.map((a) => (
+          a.achado_numero === numero ? aplicarProposta(a, proposta) : a
+        )),
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'erro');
+    } finally {
+      requestedRef.current.delete(numero);
+      setSuggesting((s) => {
+        const next = new Set(s);
+        next.delete(numero);
+        return next;
+      });
+    }
+  }, [id]);
 
   useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
     (async () => {
       const res = await fetch(`/api/processo/${id}`);
       const json = await res.json();
@@ -46,6 +111,7 @@ export default function DiretrizesPage({ params }: Props) {
         : {
             achados: r.data.achados.map((a) => ({
               achado_numero: a.numero,
+              confirmado: false,
               resultado: null,
               multa: { confirmado: false, aplicar: false, valor: '' },
               debito: { confirmado: false, imputar: false, valor: '' },
@@ -56,59 +122,40 @@ export default function DiretrizesPage({ params }: Props) {
             consideracoes_conselheira: null,
           };
       setDiretrizes(initial);
-
+      for (const achado of initial.achados) {
+        const propostaAusente = !achado.sugestao_ia?.resultado
+          || achado.sugestao_ia.fontes.length === 0;
+        if (!achado.confirmado && propostaAusente) {
+          await pedirSugestaoIa(achado.achado_numero);
+        }
+      }
     })();
-  }, [id]);
+  }, [id, pedirSugestaoIa]);
 
   function updateAchado(numero: string, patch: Partial<DiretrizAchado>) {
     setDiretrizes((d) => d && {
       ...d,
-      achados: d.achados.map((a) => (a.achado_numero === numero ? { ...a, ...patch } : a)),
+      achados: d.achados.map((a) => {
+        if (a.achado_numero !== numero) return a;
+        return { ...a, ...patch, confirmado: patch.confirmado ?? false };
+      }),
     });
   }
 
-  async function pedirSugestaoIa(numero: string) {
-    setSuggesting((s) => new Set(s).add(numero));
-    setError(null);
-    try {
-      const res = await fetch('/api/diretrizes/sugerir', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ processo_id: id, achado_numero: numero }),
-      });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error ?? 'falha ao sugerir');
-      updateAchado(numero, { sugestao_ia: j.sugestao });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'erro');
-    } finally {
-      setSuggesting((s) => {
-        const next = new Set(s);
-        next.delete(numero);
-        return next;
-      });
-    }
-  }
-
-  /**
-   * Aceita a sugestão da IA: aplica os valores propostos nos campos
-   * multa/débito/medida do achado, marcando os checkboxes correspondentes.
-   * Só os campos que a IA preencheu (não-null) são copiados.
-   */
-  function aceitarSugestao(numero: string) {
+  /** Uma única concordância humana confirma o julgamento completo do achado. */
+  function confirmarJulgamento(numero: string, confirmado: boolean) {
     setDiretrizes((d) => {
       if (!d) return d;
       return {
         ...d,
         achados: d.achados.map((a) => {
           if (a.achado_numero !== numero) return a;
-          const s = a.sugestao_ia;
-          if (!s) return a;
           return {
             ...a,
-            multa: s.multa ? { confirmado: true, aplicar: true, valor: s.multa } : a.multa,
-            debito: s.debito ? { confirmado: true, imputar: true, valor: s.debito } : a.debito,
-            medida: s.medida ? { confirmado: true, aplicar: true, texto: s.medida } : a.medida,
+            confirmado,
+            multa: { ...a.multa, confirmado },
+            debito: { ...a.debito, confirmado },
+            medida: { ...a.medida, confirmado },
           };
         }),
       };
@@ -152,9 +199,8 @@ export default function DiretrizesPage({ params }: Props) {
       <header>
         <h1 className="text-3xl font-display font-semibold text-primary">Diretrizes do julgamento</h1>
         <p className="text-on-surface-variant mt-1">
-          Para cada achado: defina o resultado (final) e marque as medidas
-          sancionatórias. A IA pode sugerir uma proposta alternativa para
-          multa/débito/medida — sua decisão prevalece.
+          A IA prepara o resultado, as consequências e a fundamentação de cada
+          achado. Revise, ajuste se necessário e confirme sua concordância.
         </p>
       </header>
 
@@ -178,11 +224,11 @@ export default function DiretrizesPage({ params }: Props) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* COLUNA 1 — RESULTADO */}
                 <div className="space-y-2">
-                  <label className="label">Resultado (decisão final da Relatoria)</label>
+                  <label className="label">Resultado proposto pela IA</label>
                   <div className="space-y-2">
                     {d.resultado === null && (
                       <div className="p-3 rounded-xl border border-warning/40 bg-warning-container/30 text-sm">
-                        Escolha o resultado. A IA não pode decidir o mérito.
+                        A IA está preparando a proposta de julgamento deste achado.
                       </div>
                     )}
 
@@ -242,16 +288,6 @@ export default function DiretrizesPage({ params }: Props) {
                       }
                       disabled={!d.multa.aplicar}
                     />
-                    <label className="flex items-center gap-2 text-xs text-on-surface-variant">
-                      <input
-                        type="checkbox"
-                        checked={d.multa.confirmado}
-                        onChange={(e) => updateAchado(a.numero, {
-                          multa: { ...d.multa, confirmado: e.target.checked },
-                        })}
-                      />
-                      Confirmo a decisão de {d.multa.aplicar ? 'aplicar' : 'não aplicar'} multa
-                    </label>
                   </div>
 
                   {/* Débito */}
@@ -280,16 +316,6 @@ export default function DiretrizesPage({ params }: Props) {
                       }
                       disabled={!d.debito.imputar}
                     />
-                    <label className="flex items-center gap-2 text-xs text-on-surface-variant">
-                      <input
-                        type="checkbox"
-                        checked={d.debito.confirmado}
-                        onChange={(e) => updateAchado(a.numero, {
-                          debito: { ...d.debito, confirmado: e.target.checked },
-                        })}
-                      />
-                      Confirmo a decisão de {d.debito.imputar ? 'imputar' : 'não imputar'} débito
-                    </label>
                   </div>
 
                   {/* Medida */}
@@ -320,16 +346,6 @@ export default function DiretrizesPage({ params }: Props) {
                       }
                       disabled={!d.medida.aplicar}
                     />
-                    <label className="flex items-center gap-2 text-xs text-on-surface-variant">
-                      <input
-                        type="checkbox"
-                        checked={d.medida.confirmado}
-                        onChange={(e) => updateAchado(a.numero, {
-                          medida: { ...d.medida, confirmado: e.target.checked },
-                        })}
-                      />
-                      Confirmo a decisão de {d.medida.aplicar ? 'aplicar' : 'não aplicar'} medida
-                    </label>
                   </div>
                 </div>
               </div>
@@ -354,21 +370,10 @@ export default function DiretrizesPage({ params }: Props) {
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-secondary text-base">lightbulb</span>
                     <span className="text-sm font-medium text-on-secondary-container">
-                      Sugestão da IA (opcional, não vinculante)
+                      Proposta da IA com fundamentação
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {d.sugestao_ia &&
-                      (d.sugestao_ia.multa || d.sugestao_ia.debito || d.sugestao_ia.medida) && (
-                        <button
-                          type="button"
-                          onClick={() => aceitarSugestao(a.numero)}
-                          className="btn-primary text-xs py-1 px-2"
-                        >
-                          <span className="material-symbols-outlined text-base">check</span>
-                          Aceitar sugestão
-                        </button>
-                      )}
                     <button
                       type="button"
                       onClick={() => pedirSugestaoIa(a.numero)}
@@ -383,7 +388,7 @@ export default function DiretrizesPage({ params }: Props) {
                       ) : (
                         <>
                           <span className="material-symbols-outlined text-base">auto_awesome</span>
-                          {d.sugestao_ia ? 'Refazer sugestão' : 'Pedir sugestão'}
+                          {d.sugestao_ia ? 'Refazer análise' : 'Gerar análise'}
                         </>
                       )}
                     </button>
@@ -391,10 +396,14 @@ export default function DiretrizesPage({ params }: Props) {
                 </div>
                 {suggesting.has(a.numero) && !d.sugestao_ia ? (
                   <p className="text-xs text-on-surface-variant italic">
-                    A IA está analisando este achado e propondo multa/débito/medida...
+                    A IA está analisando o mérito, a legislação e a jurisprudência aplicável...
                   </p>
                 ) : d.sugestao_ia ? (
                   <div className="text-xs space-y-1">
+                    <p>
+                      <strong>Resultado:</strong>{' '}
+                      {RESULTADOS.find((r) => r.v === d.sugestao_ia?.resultado)?.label ?? 'Pendente'}
+                    </p>
                     {d.sugestao_ia.multa && (
                       <p>
                         <strong>Multa:</strong> {d.sugestao_ia.multa}
@@ -418,7 +427,7 @@ export default function DiretrizesPage({ params }: Props) {
                     {d.sugestao_ia.fontes && d.sugestao_ia.fontes.length > 0 && (
                       <div className="pt-2 border-t border-secondary/20">
                         <p className="text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold mb-1">
-                          Fontes
+                          Fontes da fundamentação
                         </p>
                         <ul className="space-y-1">
                           {d.sugestao_ia.fontes.map((f, fi) => (
@@ -456,6 +465,11 @@ export default function DiretrizesPage({ params }: Props) {
                         </ul>
                       </div>
                     )}
+                    {!d.sugestao_ia.fontes.some((f) => f.tipo === 'precedente') && (
+                      <p className="pt-2 text-on-surface-variant">
+                        Nenhuma jurisprudência aderente do TCE-PE foi usada nesta proposta.
+                      </p>
+                    )}
                     {!d.sugestao_ia.multa &&
                       !d.sugestao_ia.debito &&
                       !d.sugestao_ia.medida && (
@@ -466,10 +480,35 @@ export default function DiretrizesPage({ params }: Props) {
                   </div>
                 ) : (
                   <p className="text-xs text-on-surface-variant">
-                    A IA pode propor multa/débito/medida com base na lei e no precedente — clique para gerar.
+                    A proposta será gerada automaticamente com base na lei e em precedentes aderentes.
                   </p>
                 )}
               </aside>
+
+              <label className={`flex items-start gap-3 rounded-md border p-4 cursor-pointer transition-colors ${
+                d.confirmado
+                  ? 'border-primary bg-primary-container/30'
+                  : 'border-warning/50 bg-warning-container/20'
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={d.confirmado}
+                  disabled={
+                    !d.resultado
+                    || !d.sugestao_ia?.fontes.length
+                    || suggesting.has(a.numero)
+                  }
+                  onChange={(e) => confirmarJulgamento(a.numero, e.target.checked)}
+                  className="mt-0.5 rounded text-primary focus:ring-primary h-4 w-4"
+                />
+                <span className="text-sm">
+                  <strong>Concordo com o julgamento deste achado.</strong>
+                  <span className="block mt-1 text-xs text-on-surface-variant">
+                    Esta confirmação abrange o resultado, a multa, o débito e a medida indicados acima.
+                    Qualquer alteração posterior exigirá nova confirmação.
+                  </span>
+                </span>
+              </label>
             </article>
           );
         })}

@@ -7,6 +7,7 @@ import {
 } from '@/lib/gemini/structured';
 import { ResumoSchema } from '@/schemas/resumo';
 import { MinutaSchema } from '@/schemas/minuta';
+import { PropostaJulgamentoIaSchema } from '@/schemas/diretrizes';
 
 describe('cleanGeminiJson', () => {
   it('remove fence ```json ... ```', () => {
@@ -54,6 +55,7 @@ describe('toGeminiResponseSchema', () => {
   it.each([
     ['resumo', ResumoSchema],
     ['minuta', MinutaSchema],
+    ['proposta de julgamento', PropostaJulgamentoIaSchema],
   ])('remove defaults do schema real de %s', (_name, schema) => {
     const serialized = JSON.stringify(toGeminiResponseSchema(schema));
     expect(serialized).not.toContain('"default"');

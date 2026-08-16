@@ -31,7 +31,9 @@ export function directiveBlockers(diretrizes: Diretrizes): string[] {
   const errors: string[] = [];
   for (const achado of diretrizes.achados) {
     const prefix = `Achado ${achado.achado_numero}`;
+    if (!achado.confirmado) errors.push(`${prefix}: julgamento não confirmado`);
     if (!achado.resultado) errors.push(`${prefix}: resultado não confirmado`);
+    if (!achado.sugestao_ia?.fontes.length) errors.push(`${prefix}: fundamentação jurídica sem fonte verificada`);
     if (!achado.multa.confirmado) errors.push(`${prefix}: decisão sobre multa pendente`);
     if (!achado.debito.confirmado) errors.push(`${prefix}: decisão sobre débito pendente`);
     if (!achado.medida.confirmado) errors.push(`${prefix}: decisão sobre medida pendente`);

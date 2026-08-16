@@ -24,10 +24,19 @@ function state() {
   });
   const diretrizes = DiretrizesSchema.parse({
     achados: [{
-      achado_numero: '1.1', resultado: 'regular_com_ressalvas',
+      achado_numero: '1.1', confirmado: true, resultado: 'regular_com_ressalvas',
       multa: { confirmado: true, aplicar: false, valor: '' },
       debito: { confirmado: true, imputar: false, valor: '' },
       medida: { confirmado: true, aplicar: false, texto: '' },
+      sugestao_ia: {
+        resultado: 'regular_com_ressalvas',
+        justificativa: 'Conclusão apoiada na Lei Orgânica do TCE-PE.',
+        fontes: [{
+          tipo: 'legislacao',
+          citacao: 'Lei Estadual nº 12.600/2004',
+          link: 'https://www.tcepe.tc.br/internet/docs/tce/Lei-Organica-atualizada_2015.pdf',
+        }],
+      },
     }],
   });
   const minuta = MinutaSchema.parse({
@@ -48,6 +57,12 @@ describe('conferência verificável', () => {
     const { diretrizes } = state();
     diretrizes.achados[0]!.multa.confirmado = false;
     expect(directiveBlockers(diretrizes)).toContain('Achado 1.1: decisão sobre multa pendente');
+  });
+
+  it('bloqueia o julgamento enquanto a concordância humana não for marcada', () => {
+    const { diretrizes } = state();
+    diretrizes.achados[0]!.confirmado = false;
+    expect(directiveBlockers(diretrizes)).toContain('Achado 1.1: julgamento não confirmado');
   });
 
   it('libera somente quando fatos, fontes, diretrizes e dispositivo estão coerentes', () => {

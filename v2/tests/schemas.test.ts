@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ResumoSchema } from '@/schemas/resumo';
-import { DiretrizesSchema } from '@/schemas/diretrizes';
+import { DiretrizesSchema, PropostaJulgamentoIaSchema } from '@/schemas/diretrizes';
 import { MinutaSchema } from '@/schemas/minuta';
 
 describe('ResumoSchema', () => {
@@ -62,10 +62,24 @@ describe('DiretrizesSchema', () => {
 
   it('mantém decisões de sanção pendentes por padrão', () => {
     const value = DiretrizesSchema.parse({ achados: [{ achado_numero: '1.1' }] });
+    expect(value.achados[0]!.confirmado).toBe(false);
     expect(value.achados[0]!.resultado).toBeNull();
     expect(value.achados[0]!.multa.confirmado).toBe(false);
     expect(value.achados[0]!.debito.confirmado).toBe(false);
     expect(value.achados[0]!.medida.confirmado).toBe(false);
+  });
+
+  it('exige que a proposta da IA traga um resultado de julgamento', () => {
+    expect(PropostaJulgamentoIaSchema.safeParse({ justificativa: 'Fundamentação' }).success).toBe(false);
+    expect(PropostaJulgamentoIaSchema.safeParse({
+      resultado: 'irregular',
+      justificativa: 'Fundamentação',
+      fontes: [{
+        tipo: 'legislacao',
+        citacao: 'art. 73 da Lei Estadual nº 12.600/2004',
+        link: 'https://www.tcepe.tc.br/internet/docs/tce/Lei-Organica-atualizada_2015.pdf',
+      }],
+    }).success).toBe(true);
   });
 });
 

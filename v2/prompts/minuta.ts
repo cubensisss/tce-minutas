@@ -219,9 +219,9 @@ ESTRUTURA DAS DIRETRIZES (interpretação obrigatória):
   • Se "irregular" → "voto pela IRREGULARIDADE" (DEFINITIVO)
   • Se "regular_com_ressalvas" → "voto pela REGULARIDADE COM RESSALVAS" (DEFINITIVO)
   • Se "regular" → "voto pela REGULARIDADE" (DEFINITIVO)
-- Se qualquer resultado estiver null ou qualquer decisão estiver com
-  confirmado=false, NÃO redija a minuta: essa situação deve ser bloqueada
-  pelo servidor e jamais completada por inferência.
+- Se qualquer resultado estiver null, se achado.confirmado=false ou se
+  qualquer decisão estiver com confirmado=false, NÃO redija a minuta: essa
+  situação deve ser bloqueada pelo servidor e jamais completada por inferência.
 - diretrizes.achados[i].multa.aplicar=true → aplicar multa com o valor
   em diretrizes.achados[i].multa.valor (texto livre da Conselheira) e
   fundamento no art. 73 da Lei 12.600/2004 (escolha o inciso aderente).

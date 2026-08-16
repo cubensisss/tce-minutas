@@ -33,31 +33,6 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   )).filter((item): item is ExtractionArtifact => !!item);
   const resumo = verifyResumoEvidence(parsed.data.resumo, artifacts);
 
-  if (parsed.data.confirm) {
-    const invalid = resumo.evidencias.filter((item) =>
-      item.verification === 'invalid' && !item.confirmed_by_user,
-    );
-    const facts = resumo.achados.flatMap((achado) => achado.fatos_apurados);
-    const referenced = resumo.achados.flatMap((achado) => achado.fatos_referenciados);
-    const evidenceIds = new Set(resumo.evidencias.map((item) => item.id));
-    const normalize = (value: string) => value.replace(/\s+/g, ' ').trim().toLocaleLowerCase('pt-BR');
-    const uncovered = facts.filter((fact) => !referenced.some((item) =>
-      normalize(item.text) === normalize(fact) && item.evidence_ids.every((evidenceId) => evidenceIds.has(evidenceId)),
-    ));
-    if (resumo.evidencias.length === 0 || invalid.length > 0 || uncovered.length > 0) {
-      return NextResponse.json({
-        error: 'fontes_incompletas',
-        details: {
-          evidencias: resumo.evidencias.length,
-          sem_correspondencia_automatica_e_nao_confirmadas: invalid.length,
-          fatos: facts.length,
-          referenciados: referenced.length,
-          fatos_sem_fonte: uncovered,
-        },
-      }, { status: 409 });
-    }
-  }
-
   const update = {
     resumo_data: resumo,
     achados: resumo.achados,
