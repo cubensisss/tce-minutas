@@ -6,6 +6,7 @@ import StepIndicator from '@/components/StepIndicator';
 import ProcessoChat from '@/components/ProcessoChat';
 import { MinutaSchema, type Minuta } from '@/schemas/minuta';
 import JobProgress from '@/components/JobProgress';
+import { apiMessage, readApiResponse } from '@/lib/http/api-response';
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -34,10 +35,13 @@ export default function MinutaPage({ params }: Props) {
     async function load() {
       try {
         const res = await fetch(`/api/processo/${id}`);
-        const json = await res.json();
-        const existing = MinutaSchema.safeParse(json.processo?.minuta);
+        const json = await readApiResponse(res);
+        if (!res.ok) throw new Error(apiMessage(json, 'Falha ao carregar o processo.'));
+        const processo = asRecord(json.processo);
+        const minutaMeta = asRecord(processo?.minuta_meta);
+        const existing = MinutaSchema.safeParse(processo?.minuta);
         if (!cancelled) {
-          setJurisprudenceMeta(parseJurisprudenceMeta(json.processo?.minuta_meta?.jurisprudence));
+          setJurisprudenceMeta(parseJurisprudenceMeta(minutaMeta?.jurisprudence));
         }
         if (existing.success) {
           if (!cancelled) {
@@ -72,17 +76,21 @@ export default function MinutaPage({ params }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ processo_id: id, kind: 'minuta' }),
       });
-      const jobJson = await jobRes.json();
-      const currentJobId: string | null = jobRes.ok ? jobJson.id : null;
+      const jobJson = await readApiResponse(jobRes);
+      const currentJobId = jobRes.ok && typeof jobJson.id === 'string' ? jobJson.id : null;
       setJobId(currentJobId);
       const res = await fetch('/api/minuta/gerar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ processo_id: id, job_id: currentJobId }),
       });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.message ?? j.error ?? 'falha ao gerar minuta');
-      setMinuta(j.minuta);
+      const j = await readApiResponse(res);
+      if (!res.ok) throw new Error(apiMessage(j, 'Falha ao gerar a minuta.'));
+      const generated = MinutaSchema.safeParse(j.minuta);
+      if (!generated.success) {
+        throw new Error('O servidor concluiu a geração, mas devolveu uma minuta em formato inválido.');
+      }
+      setMinuta(generated.data);
       setJurisprudenceMeta(parseJurisprudenceMeta(j.jurisprudence_report));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'erro');
@@ -295,6 +303,12 @@ function parseJurisprudenceMeta(value: unknown): JurisprudenceMeta | null {
     || !Array.isArray(item.queries)
   ) return null;
   return item as JurisprudenceMeta;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
 }
 
 function Section({ title, children }: { title: string; children: string }) {

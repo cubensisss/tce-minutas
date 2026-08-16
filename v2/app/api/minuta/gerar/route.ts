@@ -45,6 +45,35 @@ const Body = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const recoveryRequest = request.clone();
+  try {
+    return await generateMinuta(request);
+  } catch (err) {
+    const failure = describeGenerationFailure(err);
+    log.error({ err, code: failure.code }, 'falha nao tratada ao gerar minuta');
+
+    try {
+      const recoveryBody = Body.safeParse(await recoveryRequest.json().catch(() => ({})));
+      if (recoveryBody.success && recoveryBody.data.job_id) {
+        const recoveryClient = await createServerClient();
+        await updateJobProgress(recoveryClient, recoveryBody.data.job_id, {
+          phase: 'erro',
+          message: failure.message,
+          progress: 95,
+        }, 'error');
+      }
+    } catch (jobErr) {
+      log.warn({ err: jobErr }, 'nao foi possivel registrar a falha no job da minuta');
+    }
+
+    return NextResponse.json(
+      { error: failure.code, message: failure.message },
+      { status: failure.status },
+    );
+  }
+}
+
+async function generateMinuta(request: NextRequest) {
   const parsed = Body.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   const { processo_id, job_id } = parsed.data;
@@ -190,6 +219,7 @@ export async function POST(request: NextRequest) {
     }),
     schema: MinutaSchema,
     temperature: 0.3,
+    maxOutputTokens: 32_768,
     timeoutMs: 120_000,
     retries: 0,
     structuredAttempts: 1,
@@ -257,6 +287,51 @@ export async function POST(request: NextRequest) {
     timings,
     jurisprudence_report: jurisprudenceResearch.report,
   });
+}
+
+function describeGenerationFailure(err: unknown): {
+  code: string;
+  message: string;
+  status: number;
+} {
+  const rawMessage = err instanceof Error ? err.message : String(err ?? '');
+  const normalized = rawMessage.toLowerCase();
+
+  if (/timeout|timed out|aborted|tempo_limite/.test(normalized)) {
+    return {
+      code: 'tempo_limite_geracao',
+      message: 'A geração excedeu o tempo disponível. Tente novamente; a pesquisa jurisprudencial será reiniciada.',
+      status: 504,
+    };
+  }
+
+  if (
+    err instanceof SyntaxError
+    || normalized.includes('json')
+    || normalized.includes('schema')
+    || normalized.includes('zod')
+  ) {
+    return {
+      code: 'resposta_ia_invalida',
+      message: 'A IA devolveu uma resposta incompleta ou fora do formato esperado. Tente gerar novamente.',
+      status: 502,
+    };
+  }
+
+  const safeDetail = rawMessage
+    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .replace(/(?:api[_-]?key|token|authorization)\s*[:=]\s*\S+/gi, '[credencial omitida]')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 300);
+
+  return {
+    code: 'falha_interna_geracao',
+    message: safeDetail
+      ? `A geração falhou no servidor: ${safeDetail}`
+      : 'A geração falhou no servidor sem informar detalhes. Tente novamente.',
+    status: 500,
+  };
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, code: string): Promise<T> {
