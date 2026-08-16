@@ -7,9 +7,19 @@ import { saveMinutaVersion } from '@/lib/minuta/versioning';
 export const runtime = 'nodejs';
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function GET(_request: NextRequest, { params }: Ctx) {
+export async function GET(request: NextRequest, { params }: Ctx) {
   const { id } = await params;
   const supabase = await createServerClient();
+  const versionId = request.nextUrl.searchParams.get('versao_id');
+  if (versionId) {
+    const parsedId = z.string().uuid().safeParse(versionId);
+    if (!parsedId.success) return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
+    const { data, error } = await supabase.from('minuta_versoes')
+      .select('id, origem, descricao, created_at, minuta')
+      .eq('id', versionId).eq('processo_id', id).single();
+    if (error || !data) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    return NextResponse.json({ versao: data });
+  }
   const { data, error } = await supabase
     .from('minuta_versoes')
     .select('id, origem, descricao, created_at')
@@ -56,7 +66,14 @@ export async function POST(request: NextRequest, { params }: Ctx) {
 
   const { error } = await supabase
     .from('processos')
-    .update({ minuta: restaurada.data, status: 'revisao' })
+    .update({
+      minuta: restaurada.data,
+      status: 'revisao',
+      minuta_status: 'draft',
+      minuta_approved_at: null,
+      minuta_approved_hash: null,
+      conferencia_data: {},
+    })
     .eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, minuta: restaurada.data });

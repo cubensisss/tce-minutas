@@ -16,16 +16,19 @@ export const ResultadoAchadoEnum = z.enum([
 ]);
 
 export const MultaSchema = z.object({
+  confirmado: z.boolean().default(false),
   aplicar: z.boolean().default(false),
   valor: z.string().default(''), // texto livre (ex: "R$ 5.000,00" ou "10% do limite art. 73")
 });
 
 export const DebitoSchema = z.object({
+  confirmado: z.boolean().default(false),
   imputar: z.boolean().default(false),
   valor: z.string().default(''), // texto livre
 });
 
 export const MedidaSchema = z.object({
+  confirmado: z.boolean().default(false),
   aplicar: z.boolean().default(false),
   texto: z.string().default(''), // recomendação / determinação / ciência
 });
@@ -64,14 +67,11 @@ export const SugestaoIaSchema = z.object({
 
 export const DiretrizAchadoSchema = z.object({
   achado_numero: z.string(),
-  /**
-   * Resultado: se null, a Conselheira deixou em aberto e a IA tem livre
-   * arbítrio para julgar com base na evidência (auditoria + defesa + lei).
-   */
+  /** Resultado pendente enquanto null; a geração fica bloqueada. */
   resultado: ResultadoAchadoEnum.nullable().default(null),
-  multa: MultaSchema.default({ aplicar: false, valor: '' }),
-  debito: DebitoSchema.default({ imputar: false, valor: '' }),
-  medida: MedidaSchema.default({ aplicar: false, texto: '' }),
+  multa: MultaSchema.default({ confirmado: false, aplicar: false, valor: '' }),
+  debito: DebitoSchema.default({ confirmado: false, imputar: false, valor: '' }),
+  medida: MedidaSchema.default({ confirmado: false, aplicar: false, texto: '' }),
   observacoes: z.string().nullable().default(null),
   sugestao_ia: SugestaoIaSchema.nullable().default(null),
 });

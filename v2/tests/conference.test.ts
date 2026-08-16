@@ -1,0 +1,104 @@
+import { describe, expect, it } from 'vitest';
+import { buildConferenceReport, directiveBlockers, generationContextHash } from '@/lib/conference/checks';
+import { ResumoSchema } from '@/schemas/resumo';
+import { DiretrizesSchema } from '@/schemas/diretrizes';
+import { MinutaSchema } from '@/schemas/minuta';
+import { contentHash } from '@/lib/evidence/verify';
+import { isApprovedForDownload } from '@/lib/minuta/approval';
+
+const documentId = '11111111-1111-4111-8111-111111111111';
+
+function state() {
+  const resumo = ResumoSchema.parse({
+    processo: { numero: 'TCE-001', unidade_jurisdicionada: 'Município' },
+    evidencias: [{
+      id: 'ev-1', document_id: documentId, filename: 'relatorio.pdf',
+      locator_type: 'page', locator_start: 2, quote: 'O contrato foi executado integralmente.',
+      verification: 'verified', confirmed_by_user: true,
+    }],
+    achados: [{
+      numero: '1.1', titulo: 'Execução', descricao: 'Descrição do achado',
+      fatos_apurados: ['O contrato foi executado integralmente.'],
+      fatos_referenciados: [{ text: 'O contrato foi executado integralmente.', evidence_ids: ['ev-1'] }],
+    }],
+  });
+  const diretrizes = DiretrizesSchema.parse({
+    achados: [{
+      achado_numero: '1.1', resultado: 'regular_com_ressalvas',
+      multa: { confirmado: true, aplicar: false, valor: '' },
+      debito: { confirmado: true, imputar: false, valor: '' },
+      medida: { confirmado: true, aplicar: false, texto: '' },
+    }],
+  });
+  const minuta = MinutaSchema.parse({
+    ementa: `Ementa ${'técnica '.repeat(5)}`,
+    relatorio: `O contrato foi executado integralmente. ${'Relatório '.repeat(8)}`,
+    analise_completa: `Análise fundamentada ${'com elementos documentais '.repeat(8)}`,
+    decisao_voto: `Voto pela REGULARIDADE COM RESSALVAS. ${'Decisão fundamentada '.repeat(4)}`,
+    referencias: [{
+      id: 'ref-1', section: 'relatorio', excerpt: 'O contrato foi executado integralmente.',
+      source_type: 'document', evidence_id: 'ev-1', verification: 'verified', confirmed_by_user: true,
+    }],
+  });
+  return { resumo, diretrizes, minuta };
+}
+
+describe('conferência verificável', () => {
+  it('bloqueia qualquer decisão de sanção não confirmada, inclusive não aplicar', () => {
+    const { diretrizes } = state();
+    diretrizes.achados[0]!.multa.confirmado = false;
+    expect(directiveBlockers(diretrizes)).toContain('Achado 1.1: decisão sobre multa pendente');
+  });
+
+  it('libera somente quando fatos, fontes, diretrizes e dispositivo estão coerentes', () => {
+    const { resumo, diretrizes, minuta } = state();
+    const hash = generationContextHash(resumo, diretrizes);
+    const report = buildConferenceReport({
+      resumo, diretrizes, minuta,
+      resumoConfirmedAt: new Date().toISOString(),
+      diretrizesConfirmedAt: new Date().toISOString(),
+      minutaStatus: 'draft', storedContextHash: hash, currentContextHash: hash,
+    });
+    expect(report.ready).toBe(true);
+    expect(report.blockers).toBe(0);
+  });
+
+  it('detecta minuta desatualizada e divergência no dispositivo', () => {
+    const { resumo, diretrizes, minuta } = state();
+    minuta.decisao_voto = `Voto pela IRREGULARIDADE. ${'Decisão '.repeat(10)}`;
+    const report = buildConferenceReport({
+      resumo, diretrizes, minuta,
+      resumoConfirmedAt: '2026-01-01', diretrizesConfirmedAt: '2026-01-01',
+      minutaStatus: 'stale', storedContextHash: 'antigo', currentContextHash: 'novo',
+    });
+    expect(report.ready).toBe(false);
+    expect(report.checks.find((check) => check.id === 'contexto_atual')?.ok).toBe(false);
+    expect(report.checks.find((check) => check.id === 'resultado_1.1')?.ok).toBe(false);
+  });
+
+  it('não invalida o contexto apenas por confirmar uma referência', () => {
+    const { resumo, diretrizes } = state();
+    const before = generationContextHash(resumo, diretrizes);
+    resumo.evidencias[0]!.confirmed_by_user = false;
+    expect(generationContextHash(resumo, diretrizes)).toBe(before);
+  });
+
+  it('recusa DOCX antes da aprovação e após qualquer alteração do hash', () => {
+    const { resumo, diretrizes, minuta } = state();
+    const contextHash = generationContextHash(resumo, diretrizes);
+    const approvedHash = contentHash(minuta);
+    expect(isApprovedForDownload({
+      status: 'draft', approvedHash, minuta,
+      storedContextHash: contextHash, currentContextHash: contextHash,
+    })).toBe(false);
+    expect(isApprovedForDownload({
+      status: 'approved', approvedHash, minuta,
+      storedContextHash: contextHash, currentContextHash: contextHash,
+    })).toBe(true);
+    minuta.relatorio += ' Alteração posterior.';
+    expect(isApprovedForDownload({
+      status: 'approved', approvedHash, minuta,
+      storedContextHash: contextHash, currentContextHash: contextHash,
+    })).toBe(false);
+  });
+});

@@ -14,7 +14,6 @@ export default function MinutaPage({ params }: Props) {
   const [minuta, setMinuta] = useState<Minuta | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [baixando, setBaixando] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
 
   const [error, setError] = useState<string | null>(null);
@@ -77,21 +76,6 @@ export default function MinutaPage({ params }: Props) {
     }
   }
 
-  function baixarDocx() {
-    setBaixando(true);
-    // O Chrome costuma bloquear a.click() assíncrono se demorar muito.
-    // Usar window.location delega o download nativamente ao navegador.
-    window.location.href = `/api/minuta/docx?processo_id=${id}`;
-    
-    // O navegador não nos avisa quando o download conclui via href, 
-    // então voltamos o botão ao normal após um tempo razoável.
-    setTimeout(() => {
-      setBaixando(false);
-    }, 2500);
-  }
-
-
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -138,10 +122,11 @@ export default function MinutaPage({ params }: Props) {
     <div className="space-y-6">
       <StepIndicator currentStep={4} />
 
-      <header className="flex items-end justify-between">
+      <header className="page-header">
         <div>
-          <h1 className="text-3xl font-display font-semibold text-primary">Minuta</h1>
-          <p className="text-on-surface-variant mt-1">Revise abaixo. Você pode regerar ou baixar como DOCX.</p>
+          <p className="eyebrow">Redação assistida</p>
+          <h1 className="page-title">Minuta</h1>
+          <p className="page-subtitle">Revise o texto e suas fontes. O DOCX será liberado na conferência final.</p>
         </div>
         <div className="flex flex-wrap gap-2 justify-end">
           <Link href={`/processo/${id}/similares`} className="btn-ghost">
@@ -156,14 +141,10 @@ export default function MinutaPage({ params }: Props) {
             <span className="material-symbols-outlined text-base">refresh</span>
             Regerar
           </button>
-          <button
-            onClick={baixarDocx}
-            disabled={baixando}
-            className="btn-primary"
-          >
-            <span className="material-symbols-outlined text-base">download</span>
-            {baixando ? 'Baixando...' : 'Baixar DOCX'}
-          </button>
+          <Link href={`/processo/${id}/conferencia`} className="btn-primary">
+            Conferência final
+            <span className="material-symbols-outlined text-base">arrow_forward</span>
+          </Link>
         </div>
       </header>
 
@@ -194,16 +175,64 @@ export default function MinutaPage({ params }: Props) {
         </div>
       )}
 
+      <section className="card notice-warning">
+        <h2 className="font-semibold flex items-center gap-2">
+          <span className="material-symbols-outlined text-base">lock</span>
+          Documento oficial ainda bloqueado
+        </h2>
+        <p className="text-sm mt-1">
+          Edite a minuta, confira as referências e aprove a versão final antes de baixar o DOCX.
+        </p>
+      </section>
+
       <Section title="Ementa">{minuta.ementa}</Section>
       <Section title="Relatório">{minuta.relatorio}</Section>
       <Section title="Análise (voto)">{minuta.analise_completa}</Section>
       <Section title="Dispositivo">{minuta.decisao_voto}</Section>
+
+      <section className="card">
+        <h2 className="font-display text-xl text-primary mb-1">Fontes da minuta</h2>
+        <p className="text-sm text-on-surface-variant mb-4">
+          Estes marcadores aparecem somente no aplicativo e não serão incluídos no DOCX.
+        </p>
+        {minuta.referencias.length === 0 ? (
+          <p className="text-sm text-error">Nenhuma referência foi associada à minuta.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {minuta.referencias.map((reference) => (
+              <article className="source-card" key={reference.id}>
+                <div className="flex justify-between gap-3">
+                  <strong className="text-sm">{sectionLabel(reference.section)}</strong>
+                  <span className={`status-chip ${reference.verification === 'invalid' ? 'status-error' : 'status-warning'}`}>
+                    {reference.verification === 'invalid' ? 'Inválida' : 'A conferir'}
+                  </span>
+                </div>
+                <p className="text-sm mt-2">{reference.excerpt}</p>
+                {reference.precedent?.link && (
+                  <a className="text-xs text-primary underline mt-2 block" href={reference.precedent.link} target="_blank" rel="noreferrer">
+                    Abrir precedente oficial
+                  </a>
+                )}
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Chat para tirar dúvidas e analisar o mérito com o assistente.
           Carrega o histórico do processo (persiste entre sessões). */}
       <ProcessoChat processoId={id} />
     </div>
   );
+}
+
+function sectionLabel(section: Minuta['referencias'][number]['section']) {
+  return {
+    ementa: 'Ementa',
+    relatorio: 'Relatório',
+    analise_completa: 'Análise',
+    decisao_voto: 'Dispositivo',
+  }[section];
 }
 
 function Section({ title, children }: { title: string; children: string }) {

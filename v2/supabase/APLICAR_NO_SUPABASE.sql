@@ -1,7 +1,7 @@
 -- ============================================================================
 -- COLE ESTE ARQUIVO INTEIRO NO SQL EDITOR DO SUPABASE.
 --
--- Combina as migrações 0001 + 0003. Roda quantas vezes quiser — é idempotente.
+-- Combina as migrações estruturais 0001 e 0003–0007. Pode ser reaplicado.
 --
 -- IMPORTANTE: NÃO inclui 0002 (RLS). Aplique 0002_rls_single_user.sql só
 -- DEPOIS que você logar no v2 pela primeira vez e rodar
@@ -22,7 +22,7 @@ begin
   alter table public.processos
     add constraint processos_status_check
     check (status is null or status in (
-      'upload', 'novo', 'triagem', 'resumo', 'diretrizes', 'minuta', 'revisao'
+      'upload', 'novo', 'triagem', 'resumo', 'diretrizes', 'minuta', 'revisao', 'conferencia'
     ));
 end $$;
 
@@ -35,6 +35,27 @@ alter table if exists public.processos add column if not exists achados jsonb;
 alter table if exists public.processos add column if not exists descricao_objeto text;
 alter table if exists public.processos add column if not exists diretrizes jsonb;
 alter table if exists public.processos add column if not exists minuta jsonb;
+alter table if exists public.processos add column if not exists resumo_confirmado_at timestamptz;
+alter table if exists public.processos add column if not exists diretrizes_confirmadas_at timestamptz;
+alter table if exists public.processos add column if not exists minuta_status text not null default 'draft';
+alter table if exists public.processos add column if not exists minuta_approved_at timestamptz;
+alter table if exists public.processos add column if not exists minuta_approved_hash text;
+alter table if exists public.processos add column if not exists minuta_context_hash text;
+alter table if exists public.processos add column if not exists minuta_meta jsonb;
+alter table if exists public.processos add column if not exists conferencia_data jsonb not null default '{}'::jsonb;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'processos_minuta_status_check'
+      and conrelid = 'public.processos'::regclass
+  ) then
+    alter table public.processos
+      add constraint processos_minuta_status_check
+      check (minuta_status in ('draft', 'stale', 'approved'));
+  end if;
+end $$;
 
 alter table if exists public.configuracoes
   add column if not exists owner_id uuid references auth.users(id) on delete set null;
@@ -110,6 +131,10 @@ alter table public.documentos add column if not exists content_type text;
 alter table public.documentos add column if not exists extracted_text text;
 alter table public.documentos add column if not exists extracted_via text;
 alter table public.documentos add column if not exists extracted_at timestamptz;
+alter table public.documentos add column if not exists extraction_storage_path text;
+alter table public.documentos add column if not exists extraction_version integer;
+alter table public.documentos add column if not exists page_count integer;
+alter table public.documentos add column if not exists locator_confidence text;
 
 -- Se a tabela vier do v1, backfill kind <- tipo e filename <- nome_arquivo.
 do $$
@@ -177,11 +202,25 @@ create table if not exists public.minuta_versoes (
   id uuid primary key default gen_random_uuid(),
   processo_id uuid not null references public.processos(id) on delete cascade,
   owner_id uuid not null references auth.users(id) on delete cascade,
-  origem text not null check (origem in ('geracao', 'ajuste', 'restauracao')),
+  origem text not null check (origem in ('geracao', 'ajuste', 'restauracao', 'edicao_manual')),
   descricao text,
   minuta jsonb not null,
   created_at timestamptz not null default now()
 );
+
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint
+    where conname = 'minuta_versoes_origem_check'
+      and conrelid = 'public.minuta_versoes'::regclass
+  ) then
+    alter table public.minuta_versoes drop constraint minuta_versoes_origem_check;
+  end if;
+  alter table public.minuta_versoes
+    add constraint minuta_versoes_origem_check
+    check (origem in ('geracao', 'ajuste', 'restauracao', 'edicao_manual'));
+end $$;
 
 create index if not exists minuta_versoes_processo_created_idx
   on public.minuta_versoes(processo_id, created_at desc);

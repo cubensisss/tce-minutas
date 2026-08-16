@@ -23,6 +23,10 @@ import { getCachedOrFetch } from '@/lib/vertex/cache';
 import { loggerFor } from '@/lib/logger';
 import { elapsedMs, updateJobProgress } from '@/lib/jobs/progress';
 import { saveMinutaVersion } from '@/lib/minuta/versioning';
+import { buildExtractionArtifact, formatArtifactForPrompt, loadExtractionArtifact } from '@/lib/storage/extraction';
+import { directiveBlockers, generationContextHash } from '@/lib/conference/checks';
+import { contentHash, verifyMinutaReferences } from '@/lib/evidence/verify';
+import { getEnv } from '@/lib/env';
 
 const log = loggerFor('api/minuta/gerar');
 
@@ -51,7 +55,7 @@ export async function POST(request: NextRequest) {
   // 1. Carrega o estado do processo
   const { data: processo, error: pErr } = await supabase
     .from('processos')
-    .select('id, numero, unidade_jurisdicionada, resumo_data, diretrizes, minuta')
+    .select('id, numero, unidade_jurisdicionada, resumo_data, diretrizes, minuta, resumo_confirmado_at, diretrizes_confirmadas_at')
     .eq('id', processo_id)
     .single();
   if (pErr || !processo) {
@@ -66,6 +70,16 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
+  if (!processo.resumo_confirmado_at) {
+    return NextResponse.json({ error: 'resumo_nao_confirmado' }, { status: 409 });
+  }
+  const pendingDirectives = directiveBlockers(diretrizesParse.data);
+  if (!processo.diretrizes_confirmadas_at || pendingDirectives.length > 0) {
+    return NextResponse.json(
+      { error: 'diretrizes_nao_confirmadas', details: pendingDirectives },
+      { status: 409 },
+    );
+  }
 
   // 2. Carrega documentos brutos
   const docsStarted = performance.now();
@@ -74,19 +88,24 @@ export async function POST(request: NextRequest) {
   });
   const { data: docs } = await supabase
     .from('documentos')
-    .select('kind, storage_path, filename, extracted_text')
+    .select('id, kind, storage_path, filename, extracted_text, extraction_storage_path')
     .eq('processo_id', processo_id);
 
   const documentosBrutos = await Promise.all(
     (docs ?? [])
       .filter((d) => d.kind === 'relatorio' || d.kind === 'defesa')
       .map(async (d) => {
-        if (typeof d.extracted_text === 'string' && d.extracted_text.trim().length >= 200) {
-          return { filename: d.filename, text: d.extracted_text };
-        }
+        const artifact = await loadExtractionArtifact(supabase, d);
+        if (artifact) return { filename: d.filename, text: formatArtifactForPrompt(artifact) };
         const buf = await downloadDocument(supabase, d.storage_path);
         const ext = await extractFromBuffer(buf, d.filename);
-        return { filename: d.filename, text: ext.text };
+        const fallback = buildExtractionArtifact({
+          documentId: d.id,
+          filename: d.filename,
+          extracted: ext,
+          locatorConfidence: 'needs_review',
+        });
+        return { filename: d.filename, text: formatArtifactForPrompt(fallback) };
       }),
   );
   timings.documentos_ms = elapsedMs(docsStarted);
@@ -116,7 +135,7 @@ export async function POST(request: NextRequest) {
   await updateJobProgress(supabase, job_id, {
     phase: 'redacao', message: 'Redigindo e fundamentando a minuta...', progress: 62, timings,
   });
-  const minuta = await generateJson({
+  const generatedMinutaRaw = await generateJson({
     model: 'pro',
     system: buildMinutaSystemPrompt({
       persona: persona.persona,
@@ -142,6 +161,12 @@ export async function POST(request: NextRequest) {
     timeoutMs: 240_000,
     retries: 1,
   });
+  const generatedMinuta = MinutaSchema.parse(generatedMinutaRaw);
+  const minuta = verifyMinutaReferences(
+    generatedMinuta,
+    resumoParse.data,
+    precedentes,
+  );
   timings.redacao_ms = elapsedMs(generationStarted);
 
   await updateJobProgress(supabase, job_id, {
@@ -157,9 +182,30 @@ export async function POST(request: NextRequest) {
   });
 
   // 5. Persiste a minuta
+  const contextHash = generationContextHash(resumoParse.data, diretrizesParse.data);
+  const env = getEnv();
   const { error: updErr } = await supabase
     .from('processos')
-    .update({ minuta, status: 'minuta' })
+    .update({
+      minuta,
+      status: 'minuta',
+      minuta_status: 'draft',
+      minuta_approved_at: null,
+      minuta_approved_hash: null,
+      minuta_context_hash: contextHash,
+      conferencia_data: {},
+      minuta_meta: {
+        model: env.GEMINI_PRO_MODEL,
+        prompt_version: 'verificavel-v1',
+        generated_at: new Date().toISOString(),
+        context_hash: contextHash,
+        documents_hash: contentHash((docs ?? []).map((doc) => ({
+          id: doc.id,
+          path: doc.storage_path,
+          extraction_path: doc.extraction_storage_path,
+        }))),
+      },
+    })
     .eq('id', processo_id);
   if (updErr) {
     log.error({ err: updErr }, 'falha ao salvar minuta');

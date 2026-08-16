@@ -8,6 +8,10 @@ import { createServerClient } from '@/lib/supabase/server';
 import { generateMinutaDocx } from '@/lib/docx/generate';
 import { MinutaSchema } from '@/schemas/minuta';
 import { loggerFor } from '@/lib/logger';
+import { ResumoSchema } from '@/schemas/resumo';
+import { DiretrizesSchema } from '@/schemas/diretrizes';
+import { generationContextHash } from '@/lib/conference/checks';
+import { isApprovedForDownload } from '@/lib/minuta/approval';
 
 const log = loggerFor('api/minuta/docx');
 
@@ -20,7 +24,7 @@ export async function GET(request: NextRequest) {
   const supabase = await createServerClient();
   const { data: processo, error } = await supabase
     .from('processos')
-    .select('numero, unidade_jurisdicionada, exercicio, interessados, relator, minuta')
+    .select('numero, unidade_jurisdicionada, exercicio, interessados, relator, minuta, resumo_data, diretrizes, minuta_status, minuta_approved_hash, minuta_context_hash')
     .eq('id', processoId)
     .single();
 
@@ -31,6 +35,23 @@ export async function GET(request: NextRequest) {
   const minutaParse = MinutaSchema.safeParse(processo.minuta);
   if (!minutaParse.success) {
     return NextResponse.json({ error: 'minuta_invalida' }, { status: 400 });
+  }
+  const resumoParse = ResumoSchema.safeParse(processo.resumo_data);
+  const diretrizesParse = DiretrizesSchema.safeParse(processo.diretrizes);
+  const currentContextHash = resumoParse.success && diretrizesParse.success
+    ? generationContextHash(resumoParse.data, diretrizesParse.data)
+    : null;
+  if (!isApprovedForDownload({
+    status: processo.minuta_status,
+    approvedHash: processo.minuta_approved_hash,
+    minuta: minutaParse.data,
+    storedContextHash: processo.minuta_context_hash,
+    currentContextHash,
+  })) {
+    return NextResponse.json(
+      { error: 'minuta_nao_aprovada', message: 'Conclua a conferência final antes de baixar o DOCX.' },
+      { status: 409 },
+    );
   }
 
   try {

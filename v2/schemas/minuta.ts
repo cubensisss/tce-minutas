@@ -4,6 +4,7 @@
  * tipagem estrita e campos obrigatórios garantidos por Zod.
  */
 import { z } from 'zod';
+import { MinutaReferenceSchema } from '@/schemas/evidence';
 
 export const MinutaSchema = z.object({
   /** Bloco de ementa em caixa alta, parágrafos curtos. */
@@ -27,6 +28,8 @@ export const MinutaSchema = z.object({
   decisao_voto: z.string().min(50),
   /** Sugestões de ajuste pendentes que a Conselheira pode revisar. */
   sugestao_pendente: z.string().nullable().default(null),
+  /** Referencias usadas apenas na conferencia do app; nao entram no DOCX. */
+  referencias: z.array(MinutaReferenceSchema).default([]),
 });
 
 export type Minuta = z.infer<typeof MinutaSchema>;

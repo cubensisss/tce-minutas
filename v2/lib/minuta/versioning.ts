@@ -7,7 +7,7 @@ export async function saveMinutaVersion(
     processoId: string;
     ownerId: string;
     minuta: unknown;
-    origem: 'geracao' | 'ajuste' | 'restauracao';
+    origem: 'geracao' | 'ajuste' | 'restauracao' | 'edicao_manual';
     descricao?: string | null;
   },
 ) {

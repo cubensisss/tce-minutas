@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
 type Props = {
   currentStep: Step;
@@ -18,11 +18,12 @@ type Props = {
 // a extração automática que ALIMENTA o resumo, não é uma rota separada.
 // Quando estamos em /novo (sem id ainda), step 1 fica não-clicável.
 const STEPS = [
-  { num: 1 as const, label: 'Triagem', path: '/resumo' },
+  { num: 1 as const, label: 'Documentos', path: '/resumo' },
   { num: 2 as const, label: 'Resumo', path: '/resumo' },
   { num: 3 as const, label: 'Diretrizes', path: '/diretrizes' },
   { num: 4 as const, label: 'Minuta', path: '/minuta' },
   { num: 5 as const, label: 'Revisão', path: '/revisao' },
+  { num: 6 as const, label: 'Conferência', path: '/conferencia' },
 ];
 
 export default function StepIndicator({ currentStep, processoId }: Props) {
@@ -30,8 +31,8 @@ export default function StepIndicator({ currentStep, processoId }: Props) {
   const id = processoId ?? params?.id;
 
   return (
-    <div className="max-w-3xl mb-12">
-      <div className="flex items-center justify-between relative">
+    <div className="max-w-4xl mb-10 overflow-x-auto pb-2" aria-label="Etapas do processo">
+      <div className="flex items-start justify-between relative min-w-[640px]">
         <div className="absolute top-1/2 left-0 w-full h-px bg-outline-variant -z-10" />
         {STEPS.map((step) => {
           const isCompleted = step.num < currentStep;
@@ -70,7 +71,7 @@ export default function StepIndicator({ currentStep, processoId }: Props) {
 
           const inner = (
             <div
-              className="flex flex-col items-center gap-2 bg-background px-4 first:pl-0 first:pr-4 last:pl-4 last:pr-0"
+              className="flex flex-col items-center gap-2 bg-background px-3 first:pl-0 first:pr-3 last:pl-3 last:pr-0"
             >
               {dot}
               {label}

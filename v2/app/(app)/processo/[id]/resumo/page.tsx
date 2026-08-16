@@ -16,6 +16,11 @@ export default function ResumoPage({ params }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Resumo | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [confirmedAt, setConfirmedAt] = useState<string | null>(null);
 
   // Auto-trigger se não existir resumo ainda
   useEffect(() => {
@@ -28,6 +33,8 @@ export default function ResumoPage({ params }: Props) {
         if (existing.success) {
           if (!cancelled) {
             setResumo(existing.data);
+            setDraft(existing.data);
+            setConfirmedAt(json.processo?.resumo_confirmado_at ?? null);
             setLoading(false);
           }
           return;
@@ -50,6 +57,7 @@ export default function ResumoPage({ params }: Props) {
         if (!gen.ok) throw new Error(genJson.error ?? 'falha ao gerar resumo');
         if (!cancelled) {
           setResumo(genJson.resumo);
+          setDraft(genJson.resumo);
           setLoading(false);
         }
       } catch (err) {
@@ -62,6 +70,41 @@ export default function ResumoPage({ params }: Props) {
     load();
     return () => { cancelled = true; };
   }, [id]);
+
+  async function saveResumo(confirm: boolean) {
+    if (!draft) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/processo/${id}/resumo`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resumo: draft, confirm }),
+      });
+      const json = await response.json();
+      if (!response.ok) {
+        const detail = json.details ? ` ${JSON.stringify(json.details)}` : '';
+        throw new Error(`${json.error ?? 'falha ao salvar'}${detail}`);
+      }
+      setResumo(json.resumo);
+      setDraft(json.resumo);
+      setConfirmedAt(confirm ? new Date().toISOString() : null);
+      setEditing(false);
+      setPreviewing(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'erro ao salvar');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function updateAchado(index: number, patch: Partial<Resumo['achados'][number]>) {
+    setDraft((current) => current && ({
+      ...current,
+      achados: current.achados.map((achado, itemIndex) =>
+        itemIndex === index ? { ...achado, ...patch } : achado),
+    }));
+  }
 
   if (loading) {
     return (
@@ -104,14 +147,35 @@ export default function ResumoPage({ params }: Props) {
     <div className="space-y-6">
       <StepIndicator currentStep={2} />
 
-      <header>
-        <h1 className="text-3xl font-display font-semibold text-primary">
-          Resumo de triagem
-        </h1>
-        <p className="text-on-surface-variant mt-1">
-          Processo {resumo.processo.numero} — {resumo.processo.unidade_jurisdicionada}
-        </p>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-display font-semibold text-primary">Resumo de triagem</h1>
+          <p className="text-on-surface-variant mt-1">
+            Processo {resumo.processo.numero} — {resumo.processo.unidade_jurisdicionada}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {confirmedAt && <span className="status-chip status-success">Resumo confirmado</span>}
+          <button type="button" className="btn-ghost" onClick={() => { setEditing(true); setPreviewing(false); }}>
+            <span className="material-symbols-outlined text-base">edit</span>
+            Editar resumo
+          </button>
+        </div>
       </header>
+
+      {editing && draft && (
+        <ResumoEditor
+          draft={draft}
+          original={resumo}
+          previewing={previewing}
+          saving={saving}
+          onDraft={setDraft}
+          onAchado={updateAchado}
+          onPreview={() => setPreviewing(true)}
+          onCancel={() => { setDraft(resumo); setEditing(false); setPreviewing(false); }}
+          onSave={() => saveResumo(true)}
+        />
+      )}
 
       {jobId && (
         <section className="card">
@@ -247,17 +311,126 @@ export default function ResumoPage({ params }: Props) {
         </section>
       )}
 
+      <section className="card space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="font-display text-xl text-primary">Fontes documentais</h2>
+            <p className="text-sm text-on-surface-variant">Trechos usados para sustentar os fatos da triagem.</p>
+          </div>
+          <span className="status-chip">{resumo.evidencias.length} referências</span>
+        </div>
+        {resumo.evidencias.length === 0 ? (
+          <p className="notice-warning">Este é um resumo legado ou sem fontes. Refaça a triagem antes da conferência final.</p>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {resumo.evidencias.map((evidence) => (
+              <article key={evidence.id} className="source-card">
+                <div className="flex items-center justify-between gap-3">
+                  <strong className="text-sm">{evidence.filename}</strong>
+                  <span className={`status-chip ${evidence.verification === 'invalid' ? 'status-error' : evidence.verification === 'verified' ? 'status-success' : 'status-warning'}`}>
+                    {evidence.verification === 'verified' ? 'localizada' : evidence.verification === 'invalid' ? 'não localizada' : 'conferir'}
+                  </span>
+                </div>
+                <p className="text-xs text-on-surface-variant mt-1">
+                  {evidence.locator_type === 'page' ? 'Página' : evidence.locator_type === 'paragraph' ? 'Parágrafo' : 'Documento'} {evidence.locator_start ?? ''}
+                </p>
+                <blockquote className="mt-3 text-sm">“{evidence.quote}”</blockquote>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
       <div className="flex justify-between pt-4">
         <Link href="/" className="btn-ghost">
           <span className="material-symbols-outlined text-base">arrow_back</span>
           Painel
         </Link>
-        <button onClick={() => router.push(`/processo/${id}/diretrizes`)} className="btn-primary">
-          Definir diretrizes
+        <button
+          onClick={() => confirmedAt ? router.push(`/processo/${id}/diretrizes`) : saveResumo(true)}
+          className="btn-primary"
+          disabled={saving}
+        >
+          {confirmedAt ? 'Definir diretrizes' : 'Confirmar resumo'}
           <span className="material-symbols-outlined text-base">arrow_forward</span>
         </button>
       </div>
     </div>
+  );
+}
+
+function ResumoEditor({
+  draft,
+  original,
+  previewing,
+  saving,
+  onDraft,
+  onAchado,
+  onPreview,
+  onCancel,
+  onSave,
+}: {
+  draft: Resumo;
+  original: Resumo;
+  previewing: boolean;
+  saving: boolean;
+  onDraft: (value: Resumo) => void;
+  onAchado: (index: number, patch: Partial<Resumo['achados'][number]>) => void;
+  onPreview: () => void;
+  onCancel: () => void;
+  onSave: () => void;
+}) {
+  const lines = (value: string) => value.split('\n').map((item) => item.trim()).filter(Boolean);
+  return (
+    <section className="card space-y-5 border-primary/30">
+      <div>
+        <h2 className="font-display text-xl text-primary">Editar e confirmar resumo</h2>
+        <p className="text-sm text-on-surface-variant">A confirmação invalida diretrizes e minutas anteriores.</p>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="label">Número<input className="input mt-2" value={draft.processo.numero} onChange={(e) => onDraft({ ...draft, processo: { ...draft.processo, numero: e.target.value } })} /></label>
+        <label className="label">Unidade<input className="input mt-2" value={draft.processo.unidade_jurisdicionada} onChange={(e) => onDraft({ ...draft, processo: { ...draft.processo, unidade_jurisdicionada: e.target.value } })} /></label>
+        <label className="label">Exercício<input className="input mt-2" value={draft.processo.exercicio ?? ''} onChange={(e) => onDraft({ ...draft, processo: { ...draft.processo, exercicio: e.target.value || null } })} /></label>
+        <label className="label">Interessados<input className="input mt-2" value={draft.processo.interessados.join(', ')} onChange={(e) => onDraft({ ...draft, processo: { ...draft.processo, interessados: e.target.value.split(',').map((item) => item.trim()).filter(Boolean) } })} /></label>
+      </div>
+      <label className="label">Narrativa dos fatos<textarea className="input mt-2" rows={6} value={draft.narrativa_fatos ?? ''} onChange={(e) => onDraft({ ...draft, narrativa_fatos: e.target.value || null })} /></label>
+      {draft.achados.map((achado, index) => (
+        <fieldset key={achado.numero} className="rounded-2xl border border-outline-variant p-4 space-y-3">
+          <legend className="px-2 font-display text-primary">Achado {achado.numero}</legend>
+          <label className="label">Título<input className="input mt-2" value={achado.titulo} onChange={(e) => onAchado(index, { titulo: e.target.value })} /></label>
+          <label className="label">Descrição<textarea className="input mt-2" rows={4} value={achado.descricao} onChange={(e) => onAchado(index, { descricao: e.target.value })} /></label>
+          <label className="label">Fatos apurados — um por linha<textarea className="input mt-2" rows={5} value={achado.fatos_apurados.join('\n')} onChange={(e) => {
+            const fatos = lines(e.target.value);
+            onAchado(index, {
+              fatos_apurados: fatos,
+              fatos_referenciados: fatos.map((text, factIndex) => ({
+                text,
+                evidence_ids: achado.fatos_referenciados[factIndex]?.evidence_ids ?? [],
+              })).filter((item) => item.evidence_ids.length > 0),
+            });
+          }} /></label>
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="label">Responsáveis — um por linha<textarea className="input mt-2" rows={3} value={achado.responsaveis.join('\n')} onChange={(e) => onAchado(index, { responsaveis: lines(e.target.value) })} /></label>
+            <label className="label">Fundamentação — uma por linha<textarea className="input mt-2" rows={3} value={achado.fundamentacao_legal.join('\n')} onChange={(e) => onAchado(index, { fundamentacao_legal: lines(e.target.value) })} /></label>
+          </div>
+          <label className="label">Defesa completa<textarea className="input mt-2" rows={4} value={achado.defesa_completa ?? ''} onChange={(e) => onAchado(index, { defesa_completa: e.target.value || null })} /></label>
+        </fieldset>
+      ))}
+      {previewing && (
+        <div className="compare-grid">
+          <div><h3 className="compare-title">Antes</h3><pre>{JSON.stringify(original, null, 2)}</pre></div>
+          <div><h3 className="compare-title">Depois</h3><pre>{JSON.stringify(draft, null, 2)}</pre></div>
+        </div>
+      )}
+      <div className="flex flex-wrap justify-end gap-2">
+        <button type="button" className="btn-ghost" onClick={onCancel}>Cancelar</button>
+        {!previewing ? (
+          <button type="button" className="btn-primary" onClick={onPreview}>Revisar alterações</button>
+        ) : (
+          <button type="button" className="btn-primary" onClick={onSave} disabled={saving}>{saving ? 'Salvando...' : 'Salvar e confirmar'}</button>
+        )}
+      </div>
+    </section>
   );
 }
 

@@ -27,11 +27,20 @@ Regras:
 - Se houver tabelas, transcreva linha a linha, separando colunas com
   " | " (barra vertical entre espaços).
 - Se uma palavra estiver ilegível, marque como [ilegível] — não chute.
+- Antes do conteúdo de CADA página, escreva exatamente "--- PÁGINA N ---",
+  substituindo N pelo número sequencial da página.
 - Não escreva nada além do conteúdo transcrito. Sem cabeçalhos do tipo
   "Aqui está a transcrição:" ou avisos.`;
 
-const USER_PROMPT = `Transcreva LITERALMENTE todo o texto deste PDF. Mantenha
-ordem original, quebras de parágrafo e valores exatos.`;
+const USER_PROMPT = `Transcreva LITERALMENTE todo o texto deste PDF, separado
+por marcadores "--- PÁGINA N ---". Mantenha ordem original, quebras de
+parágrafo e valores exatos.`;
+
+export type OcrResult = {
+  text: string;
+  pages: string[];
+  locatorConfidence: 'needs_review';
+};
 
 /**
  * Recebe o PDF como bytes e retorna texto puro extraído via Gemini.
@@ -41,7 +50,7 @@ ordem original, quebras de parágrafo e valores exatos.`;
 export async function ocrPdfWithGemini(
   bytes: Uint8Array | ArrayBuffer,
   filename: string,
-): Promise<string> {
+): Promise<OcrResult> {
   log.info({ filename, sizeKb: Math.round((bytes instanceof Uint8Array ? bytes.length : bytes.byteLength) / 1024) }, 'iniciando OCR via Gemini Flash');
 
   const text = await generateTextWithFile({
@@ -60,5 +69,21 @@ export async function ocrPdfWithGemini(
   });
 
   log.info({ filename, chars: text.length }, 'OCR concluído');
-  return text.trim();
+  const pages = parseOcrPages(text);
+  return {
+    text: pages.length > 0 ? pages.join('\n\n') : text.trim(),
+    pages: pages.length > 0 ? pages : [text.trim()],
+    locatorConfidence: 'needs_review',
+  };
+}
+
+export function parseOcrPages(value: string): string[] {
+  const matches = [...value.matchAll(/---\s*P[ÁA]GINA\s+(\d+)\s*---/gi)];
+  if (matches.length === 0) return [];
+  return matches.map((current, index) => {
+    const next = matches[index + 1];
+    const start = (current.index ?? 0) + current[0].length;
+    const end = next?.index ?? value.length;
+    return value.slice(start, end).trim();
+  });
 }

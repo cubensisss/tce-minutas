@@ -37,7 +37,7 @@ const PatchSchema = z.object({
   interessados: z.string().nullable().optional(),
   relator: z.string().nullable().optional(),
   status: z
-    .enum(['novo', 'triagem', 'resumo', 'diretrizes', 'minuta', 'revisao'])
+    .enum(['novo', 'triagem', 'resumo', 'diretrizes', 'minuta', 'revisao', 'conferencia'])
     .optional(),
 });
 

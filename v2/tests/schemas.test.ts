@@ -25,6 +25,7 @@ describe('ResumoSchema', () => {
     expect(r.processo.interessados).toEqual([]);
     expect(r.achados[0]!.gravidade).toBe('media');
     expect(r.achados[0]!.fundamentacao_legal).toEqual([]);
+    expect(r.evidencias).toEqual([]);
   });
 
   it('rejeita gravidade inválida', () => {
@@ -57,6 +58,14 @@ describe('DiretrizesSchema', () => {
       achados: [{ achado_numero: '1', resultado: 'procedente' }],
     });
     expect(bad.success).toBe(false);
+  });
+
+  it('mantém decisões de sanção pendentes por padrão', () => {
+    const value = DiretrizesSchema.parse({ achados: [{ achado_numero: '1.1' }] });
+    expect(value.achados[0]!.resultado).toBeNull();
+    expect(value.achados[0]!.multa.confirmado).toBe(false);
+    expect(value.achados[0]!.debito.confirmado).toBe(false);
+    expect(value.achados[0]!.medida.confirmado).toBe(false);
   });
 });
 

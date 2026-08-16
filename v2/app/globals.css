@@ -7,8 +7,8 @@
 
 @theme {
   /* Tipografia */
-  --font-sans: "Newsreader", ui-serif, Georgia, "Times New Roman", serif;
-  --font-display: "Newsreader", ui-serif, Georgia, serif;
+  --font-sans: var(--font-inter), "Segoe UI", Arial, sans-serif;
+  --font-display: var(--font-newsreader), Georgia, serif;
 
   /* Cores institucionais (azul TCE-PE) */
   --color-primary: #0A3D62;
@@ -59,6 +59,11 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 55%, white);
+  outline-offset: 3px;
+}
+
 ::selection {
   background: var(--color-primary-container);
   color: var(--color-on-primary-container);
@@ -82,7 +87,7 @@ html, body {
 
 @layer components {
   .card {
-    @apply bg-surface border border-outline-variant rounded-2xl p-6 shadow-[var(--shadow-elev-1)];
+    @apply bg-surface border border-outline-variant rounded-2xl p-5 sm:p-6 shadow-[var(--shadow-elev-1)];
   }
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full
@@ -103,5 +108,53 @@ html, body {
   }
   .label {
     @apply block text-sm font-medium text-on-surface-variant mb-2;
+  }
+  .page-header {
+    @apply flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4;
+  }
+  .page-title {
+    @apply text-3xl sm:text-4xl font-display font-semibold text-primary leading-tight;
+  }
+  .page-subtitle {
+    @apply text-sm sm:text-base text-on-surface-variant mt-1 max-w-2xl;
+  }
+  .eyebrow {
+    @apply text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-primary mb-1;
+  }
+  .status-chip {
+    @apply inline-flex items-center shrink-0 rounded-full px-2.5 py-1 text-[0.6875rem] font-semibold leading-none;
+  }
+  .status-success {
+    @apply bg-success-container text-success;
+  }
+  .status-warning {
+    @apply bg-warning-container text-warning;
+  }
+  .status-error {
+    @apply bg-error-container text-error;
+  }
+  .notice-success {
+    @apply border-success/30 bg-success-container/40;
+  }
+  .notice-warning {
+    @apply border-warning/30 bg-warning-container/40;
+  }
+  .notice-error {
+    @apply border-error/30 bg-error-container/40;
+  }
+  .source-card {
+    @apply rounded-xl border border-outline-variant bg-background p-3;
+  }
+  .compare-grid {
+    @apply grid grid-cols-1 lg:grid-cols-2 gap-4;
+  }
+  .compare-title {
+    @apply text-xs font-bold uppercase tracking-wide text-on-surface-variant mb-2;
+  }
+}
+
+@media (max-width: 640px) {
+  .btn-primary, .btn-ghost {
+    min-height: 44px;
   }
 }

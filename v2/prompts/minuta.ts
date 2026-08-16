@@ -62,7 +62,17 @@ INTERESSADOS) é gerado pelo template, NÃO inclua essas linhas no
   "relatorio": "string — narrativa cronológica do processo, SEM 'É o relatório' (já no template)",
   "analise_completa": "string — para CADA achado: '**2.1.X. Título**', '**Análise da Auditoria:**', citações com '> ', '**Defesa do Interessado:**', '**Análise do Relator:**', conclusão",
   "decisao_voto": "string — '**6. DECISÃO**', 'Ante o exposto...', 'Voto no sentido de:', seguido de CONSIDERANDOs e depois itens 1. **JULGAR**, 2. **IMPUTAR DÉBITO**, 3. **APLICAR MULTA**, 4. **DECLARAR INIDONEIDADE**, 5. **DETERMINAR**",
-  "sugestao_pendente": "string|null — pontos onde usei [VERIFICAR: ...] ou que precisam de validação humana"
+  "sugestao_pendente": "string|null — pontos onde usei [VERIFICAR: ...] ou que precisam de validação humana",
+  "referencias": [{
+    "id": "string único",
+    "section": "ementa|relatorio|analise_completa|decisao_voto",
+    "excerpt": "trecho EXATO da minuta sustentado pela fonte",
+    "source_type": "document|precedent",
+    "evidence_id": "ID de resumo.evidencias ou null",
+    "precedent": "objeto com result_id, processo, acordao, title, link e quote; ou null",
+    "verification": "pending",
+    "confirmed_by_user": false
+  }]
 }
 
 REGRAS DE MARKDOWN E TOM (o DOCX converte literalmente):
@@ -91,7 +101,9 @@ export function buildMinutaUserPrompt(input: BuildMinutaInput): string {
       ? input.precedentes
           .map(
             (p, i) =>
-              `### Precedente ${i + 1}${p.title ? ` — ${p.title}` : ''}
+              `### Precedente ${i + 1} | RESULT_ID=${p.id}${p.title ? ` — ${p.title}` : ''}
+Processo: ${p.processo ?? 'n/a'}
+Acórdão: ${p.acordao ?? 'n/a'}
 Link: ${p.link ?? 'n/a'}
 Trecho relevante:
 ${p.snippet ?? '(sem trecho)'}`,
@@ -116,6 +128,8 @@ ${docsBlock}
 # - Aproveite a fundamentação dos trechos (teses, dispositivos, raciocínio)
 #   para enriquecer a Análise do Relator do achado correspondente.
 # - Use um precedente apenas no achado a que ele for materialmente aderente.
+# - Para todo precedente nominalmente citado, crie uma entrada em "referencias"
+#   copiando RESULT_ID, processo, acórdão, link e trecho exatamente deste bloco.
 ${precedentesBlock}
 
 # PRECEDENTES OBRIGATORIOS CONFIGURADOS PELA CONSELHEIRA
@@ -161,10 +175,10 @@ Elabore a minuta de voto seguindo RIGOROSAMENTE a estrutura padrão e as instru�
 
 Para CADA achado das diretrizes, na seção 5 (analise_completa):
   1. Bloco "Análise da auditoria": entre aspas, transcreva pelo menos
-     2 trechos LITERAIS do Relatório de Auditoria (busque nos documentos
-     brutos) que fundamentem o achado. Após as citações, faça resumo.
+     1 trecho LITERAL já cadastrado em resumo.evidencias que fundamente o
+     achado. Após a citação, faça resumo e crie a referência correspondente.
   2. Bloco "Defesa do interessado": entre aspas, transcreva pelo menos
-     2 trechos LITERAIS da Defesa correspondente. Se houver múltiplas
+     1 trecho LITERAL cadastrado em resumo.evidencias da Defesa correspondente. Se houver múltiplas
      defesas, separe com subtítulos (Defesa do Prefeito, Defesa da
      Empresa, etc.). Após as citações, faça resumo.
   3. Bloco "Análise do Relator": aplicar o MÉTODO DOS 4 ATOS sem
@@ -205,14 +219,9 @@ ESTRUTURA DAS DIRETRIZES (interpretação obrigatória):
   • Se "irregular" → "voto pela IRREGULARIDADE" (DEFINITIVO)
   • Se "regular_com_ressalvas" → "voto pela REGULARIDADE COM RESSALVAS" (DEFINITIVO)
   • Se "regular" → "voto pela REGULARIDADE" (DEFINITIVO)
-  • Se null → a Conselheira deixou em ABERTO. Você tem livre arbítrio
-    para decidir entre as três hipóteses, FUNDAMENTANDO a escolha com:
-    (a) Lei 12.600/2004 art. 59 (regular se exatidão+legalidade; ressalvas
-    se falha formal sem dano grave; irregular se grave infração ou dano);
-    (b) LINDB arts. 20 e 22 (ponderar dificuldades reais, ausência de erro
-    grosseiro, eficácia das medidas corretivas); (c) gravidade declarada do
-    achado e qualidade da defesa apresentada. Quando decidir você mesmo,
-    sinalize em sugestao_pendente: "Decisão tomada pela IA — confirmar".
+- Se qualquer resultado estiver null ou qualquer decisão estiver com
+  confirmado=false, NÃO redija a minuta: essa situação deve ser bloqueada
+  pelo servidor e jamais completada por inferência.
 - diretrizes.achados[i].multa.aplicar=true → aplicar multa com o valor
   em diretrizes.achados[i].multa.valor (texto livre da Conselheira) e
   fundamento no art. 73 da Lei 12.600/2004 (escolha o inciso aderente).
@@ -220,22 +229,8 @@ ESTRUTURA DAS DIRETRIZES (interpretação obrigatória):
   em diretrizes.achados[i].debito.valor.
 - diretrizes.achados[i].medida.aplicar=true → incluir o texto literal de
   diretrizes.achados[i].medida.texto como recomendação/determinação/ciência.
-- Se algum dos três acima estiver com aplicar=false, você TEM AUTORIZAÇÃO
-  para aplicar a sanção quando ela for RAZOÁVEL diante:
-    (a) do resultado escolhido (ex: irregular sem multa é incomum quando
-        há grave infração comprovada);
-    (b) da gravidade do achado;
-    (c) da Lei 12.600/2004 (art. 73 com inciso adequado para multa, art. 62
-        para débito quando houver dano apurado);
-    (d) da LINDB (atenuantes que evitem aplicação automática).
-  Quando aplicar uma sanção não marcada pela Conselheira, OBRIGATÓRIO:
-    1. Calcular respeitando as faixas do art. 73 (multa = % sobre o LIMITE LEGAL VIGENTE indicado no system prompt —
-       NUNCA % sobre sobrepreço, contrato ou dano);
-    2. Justificar no bloco "Análise do Relator" do achado correspondente;
-    3. Anotar em sugestao_pendente: "Sanção aplicada pela IA por inferência —
-       confirmar: [tipo] no achado [n]".
-  Se NÃO for razoável aplicar (ex: regular sem dano, falha estritamente
-  formal), NÃO aplicar nada.
+- Se aplicar/imputar=false e confirmado=true, NÃO inclua a sanção ou medida.
+- É PROIBIDO criar, aumentar, reduzir ou sugerir sanção dentro da minuta.
 - diretrizes.achados[i].sugestao_ia, se presente, é uma proposta antiga
   da própria IA — IGNORAR para a minuta final, ela já foi avaliada pela
   Conselheira.
@@ -250,14 +245,13 @@ REGRAS CRÍTICAS:
 - Use SOMENTE artigos da Lei 12.600/2004, LINDB (arts. 20 e 22),
   Lei 8.666/93, Lei 14.133/2021 e Lei 10.028/2000 — todos descritos
   na PERSONA. Outros dispositivos só se vierem nos documentos brutos.
-- NUNCA inverter o resultado das diretrizes quando ele estiver definido
-  (irregular/regular_com_ressalvas/regular). Só decidir você mesmo
-  quando resultado=null.
+- NUNCA inverter, preencher ou inferir o resultado das diretrizes.
 - NUNCA mudar o valor de multa/débito/medida QUANDO a Conselheira
   marcou aplicar=true — esses valores são literais.
-- Quando aplicar=false, você está AUTORIZADO a aplicar a sanção se for
-  razoável (ver "ESTRUTURA DAS DIRETRIZES" acima) — sempre calculando
-  multa pelo art. 73 (% sobre o LIMITE LEGAL VIGENTE indicado no system prompt) e anotando em sugestao_pendente.
+- Quando aplicar/imputar=false, é PROIBIDO incluir a sanção ou medida.
+- Toda afirmação factual, citação literal e precedente nominal usado deve
+  possuir uma entrada em "referencias". Referências são metadados do app
+  e não devem ser inseridas no texto da minuta.
 - NUNCA inventar precedente, processo, conselheiro ou número de voto.
 - NUNCA aplicar % sobre sobrepreço/contrato/dano — multa é SEMPRE %
   sobre o LIMITE LEGAL VIGENTE (informado no system prompt, bloco

@@ -9,6 +9,7 @@
  * objetivos e defesas completas.
  */
 import { z } from 'zod';
+import { EvidenceRefSchema, ReferencedFactSchema } from '@/schemas/evidence';
 
 /** Bloco de dados objetivos: número, valores, datas, partes envolvidas. */
 export const DadosObjetivosSchema = z.object({
@@ -45,6 +46,9 @@ export const AchadoSchema = z.object({
     'achado: datas, valores, atos administrativos, omissões, etc. ' +
     'Cada item uma frase factual.',
   ),
+  fatos_referenciados: z.array(ReferencedFactSchema).default([]).describe(
+    'Os mesmos fatos apurados, vinculados aos IDs das evidencias documentais que os sustentam.',
+  ),
   responsaveis: z.array(z.string()).default([]),
   fundamentacao_legal: z.array(z.string()).default([]),
   defesa_resumo: z.string().nullable().default(null).describe(
@@ -80,6 +84,7 @@ export const ResumoSchema = z.object({
    * próprios e valores. Esse campo dá a "fotografia geral" antes dos achados.
    */
   narrativa_fatos: z.string().nullable().default(null),
+  evidencias: z.array(EvidenceRefSchema).default([]),
   achados: z.array(AchadoSchema).min(1),
   observacoes_triagem: z.string().nullable().default(null),
 });

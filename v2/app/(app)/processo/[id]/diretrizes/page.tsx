@@ -19,9 +19,6 @@ const RESULTADOS = [
   { v: 'regular', label: 'Regular' },
 ] as const;
 
-// valor sentinela para o radio "deixar a IA decidir" (no schema vira null)
-const AUTO = '__auto__';
-
 export default function DiretrizesPage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
@@ -50,9 +47,9 @@ export default function DiretrizesPage({ params }: Props) {
             achados: r.data.achados.map((a) => ({
               achado_numero: a.numero,
               resultado: null,
-              multa: { aplicar: false, valor: '' },
-              debito: { imputar: false, valor: '' },
-              medida: { aplicar: false, texto: '' },
+              multa: { confirmado: false, aplicar: false, valor: '' },
+              debito: { confirmado: false, imputar: false, valor: '' },
+              medida: { confirmado: false, aplicar: false, texto: '' },
               observacoes: null,
               sugestao_ia: null,
             })),
@@ -109,9 +106,9 @@ export default function DiretrizesPage({ params }: Props) {
           if (!s) return a;
           return {
             ...a,
-            multa: s.multa ? { aplicar: true, valor: s.multa } : a.multa,
-            debito: s.debito ? { imputar: true, valor: s.debito } : a.debito,
-            medida: s.medida ? { aplicar: true, texto: s.medida } : a.medida,
+            multa: s.multa ? { confirmado: true, aplicar: true, valor: s.multa } : a.multa,
+            debito: s.debito ? { confirmado: true, imputar: true, valor: s.debito } : a.debito,
+            medida: s.medida ? { confirmado: true, aplicar: true, texto: s.medida } : a.medida,
           };
         }),
       };
@@ -129,7 +126,9 @@ export default function DiretrizesPage({ params }: Props) {
         body: JSON.stringify({ processo_id: id, diretrizes }),
       });
       const j = await res.json();
-      if (!res.ok) throw new Error(j.error ?? 'falha ao salvar');
+      if (!res.ok) throw new Error(
+        Array.isArray(j.details) ? j.details.join(' • ') : (j.error ?? 'falha ao salvar'),
+      );
       router.push(`/processo/${id}/minuta`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'erro');
@@ -181,30 +180,11 @@ export default function DiretrizesPage({ params }: Props) {
                 <div className="space-y-2">
                   <label className="label">Resultado (decisão final da Relatoria)</label>
                   <div className="space-y-2">
-                    {/* Opção: deixar a IA decidir */}
-                    <label
-                      className={`flex items-center gap-3 p-3 rounded-md border border-dashed cursor-pointer transition-colors ${
-                        d.resultado === null
-                          ? 'border-secondary bg-secondary-container/40'
-                          : 'border-outline-variant hover:bg-surface-variant/50'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name={`res-${a.numero}`}
-                        value={AUTO}
-                        checked={d.resultado === null}
-                        onChange={() => updateAchado(a.numero, { resultado: null })}
-                        className="text-secondary focus:ring-secondary"
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium flex items-center gap-1">
-                          <span className="material-symbols-outlined text-base">auto_awesome</span>
-                          Deixar a IA decidir
-                        </span>
-                        <span className="text-[11px] text-on-surface-variant">livre arbítrio com base na evidência</span>
+                    {d.resultado === null && (
+                      <div className="p-3 rounded-xl border border-warning/40 bg-warning-container/30 text-sm">
+                        Escolha o resultado. A IA não pode decidir o mérito.
                       </div>
-                    </label>
+                    )}
 
                     {RESULTADOS.map((r) => (
                       <label
@@ -243,7 +223,7 @@ export default function DiretrizesPage({ params }: Props) {
                         checked={d.multa.aplicar}
                         onChange={(e) =>
                           updateAchado(a.numero, {
-                            multa: { ...d.multa, aplicar: e.target.checked },
+                            multa: { ...d.multa, aplicar: e.target.checked, confirmado: false },
                           })
                         }
                         className="rounded text-primary focus:ring-primary h-4 w-4"
@@ -257,11 +237,21 @@ export default function DiretrizesPage({ params }: Props) {
                       value={d.multa.valor}
                       onChange={(e) =>
                         updateAchado(a.numero, {
-                          multa: { ...d.multa, valor: e.target.value },
+                           multa: { ...d.multa, valor: e.target.value, confirmado: false },
                         })
                       }
                       disabled={!d.multa.aplicar}
                     />
+                    <label className="flex items-center gap-2 text-xs text-on-surface-variant">
+                      <input
+                        type="checkbox"
+                        checked={d.multa.confirmado}
+                        onChange={(e) => updateAchado(a.numero, {
+                          multa: { ...d.multa, confirmado: e.target.checked },
+                        })}
+                      />
+                      Confirmo a decisão de {d.multa.aplicar ? 'aplicar' : 'não aplicar'} multa
+                    </label>
                   </div>
 
                   {/* Débito */}
@@ -272,7 +262,7 @@ export default function DiretrizesPage({ params }: Props) {
                         checked={d.debito.imputar}
                         onChange={(e) =>
                           updateAchado(a.numero, {
-                            debito: { ...d.debito, imputar: e.target.checked },
+                            debito: { ...d.debito, imputar: e.target.checked, confirmado: false },
                           })
                         }
                         className="rounded text-primary focus:ring-primary h-4 w-4"
@@ -285,11 +275,21 @@ export default function DiretrizesPage({ params }: Props) {
                       value={d.debito.valor}
                       onChange={(e) =>
                         updateAchado(a.numero, {
-                          debito: { ...d.debito, valor: e.target.value },
+                           debito: { ...d.debito, valor: e.target.value, confirmado: false },
                         })
                       }
                       disabled={!d.debito.imputar}
                     />
+                    <label className="flex items-center gap-2 text-xs text-on-surface-variant">
+                      <input
+                        type="checkbox"
+                        checked={d.debito.confirmado}
+                        onChange={(e) => updateAchado(a.numero, {
+                          debito: { ...d.debito, confirmado: e.target.checked },
+                        })}
+                      />
+                      Confirmo a decisão de {d.debito.imputar ? 'imputar' : 'não imputar'} débito
+                    </label>
                   </div>
 
                   {/* Medida */}
@@ -300,7 +300,7 @@ export default function DiretrizesPage({ params }: Props) {
                         checked={d.medida.aplicar}
                         onChange={(e) =>
                           updateAchado(a.numero, {
-                            medida: { ...d.medida, aplicar: e.target.checked },
+                            medida: { ...d.medida, aplicar: e.target.checked, confirmado: false },
                           })
                         }
                         className="rounded text-primary focus:ring-primary h-4 w-4"
@@ -315,11 +315,21 @@ export default function DiretrizesPage({ params }: Props) {
                       value={d.medida.texto}
                       onChange={(e) =>
                         updateAchado(a.numero, {
-                          medida: { ...d.medida, texto: e.target.value },
+                           medida: { ...d.medida, texto: e.target.value, confirmado: false },
                         })
                       }
                       disabled={!d.medida.aplicar}
                     />
+                    <label className="flex items-center gap-2 text-xs text-on-surface-variant">
+                      <input
+                        type="checkbox"
+                        checked={d.medida.confirmado}
+                        onChange={(e) => updateAchado(a.numero, {
+                          medida: { ...d.medida, confirmado: e.target.checked },
+                        })}
+                      />
+                      Confirmo a decisão de {d.medida.aplicar ? 'aplicar' : 'não aplicar'} medida
+                    </label>
                   </div>
                 </div>
               </div>

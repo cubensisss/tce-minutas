@@ -1,5 +1,9 @@
 import type { Metadata } from 'next';
+import { Inter, Newsreader } from 'next/font/google';
 import './globals.css';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+const newsreader = Newsreader({ subsets: ['latin'], variable: '--font-newsreader', display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'Atelier Judicial — TCE-PE',
@@ -13,12 +17,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={`${inter.variable} ${newsreader.variable}`}>
       <head>
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&display=swap"
-        />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined"

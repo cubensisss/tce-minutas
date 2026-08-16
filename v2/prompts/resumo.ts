@@ -12,8 +12,9 @@ import { ResumoSchema } from '@/schemas/resumo';
 export type BuildResumoPromptInput = {
   /** Texto bruto extraído do relatório de auditoria. */
   relatorioAuditoria: string;
+  relatorioDocumentId: string;
   /** Textos das defesas prévias (cada item de uma defesa). */
-  defesas: Array<{ filename: string; text: string }>;
+  defesas: Array<{ documentId: string; filename: string; text: string }>;
 };
 
 export function buildResumoSystemPrompt() {
@@ -32,6 +33,13 @@ nomes e citações que estão nos documentos.
 - Use SOMENTE informação presente nos documentos.
 - Se um campo não aparecer, retorne null (ou array/string vazia).
 - Achados devem espelhar a numeração do relatório de auditoria.
+- Cada fato apurado deve ter uma entrada em "fatos_referenciados" e ao
+  menos um ID correspondente em "evidencias".
+- Em "evidencias", copie literalmente um trecho que sustente o fato e use
+  exatamente o DOC_ID e o localizador (PAGINA/PARAGRAFO) informados nos
+  marcadores dos documentos. Nunca invente uma página.
+- Preencha "verification" com "pending" e "confirmed_by_user" com false;
+  o servidor fará a verificação determinística depois.
 - Em qualquer texto livre: períodos curtos, técnicos, com VALORES,
   DATAS, NOMES PRÓPRIOS e DISPOSITIVOS LEGAIS sempre que disponíveis.
 
@@ -122,11 +130,11 @@ export function buildResumoUserPrompt(input: BuildResumoPromptInput): string {
   const defesasBlock = input.defesas
     .map(
       (d, i) =>
-        `--- DEFESA ${i + 1} (${d.filename}) ---\n${truncate(d.text, 30_000)}`,
+        `--- DEFESA ${i + 1} (${d.filename}, DOC_ID=${d.documentId}) ---\n${truncate(d.text, 30_000)}`,
     )
     .join('\n\n');
 
-  return `# RELATÓRIO DE AUDITORIA
+  return `# RELATÓRIO DE AUDITORIA (DOC_ID=${input.relatorioDocumentId})
 ${truncate(input.relatorioAuditoria, 60_000)}
 
 # DEFESAS PRÉVIAS
@@ -139,6 +147,8 @@ ${JSON.stringify(zodShapeHint(ResumoSchema), null, 2)}
 - Detalhe FATOS, DATAS, VALORES e NOMES — não economize palavras.
 - "narrativa_fatos" deve ter 8-15 linhas em prosa.
 - Cada "achado.descricao" deve ter 4-8 linhas, "fatos_apurados" 3-8 itens.
+- Cada item de "fatos_apurados" deve reaparecer em "fatos_referenciados"
+  com ao menos uma evidência literal e localizável.
 - "defesa_completa" deve ter 5-10 linhas, fiéis ao texto da defesa.
 - ZERO invenção. Se não está nos documentos, é null.
 
@@ -174,12 +184,26 @@ function zodShapeHint(_: unknown): unknown {
       datas_relevantes: 'string[]',
     },
     narrativa_fatos: 'string|null (8-15 linhas em prosa)',
+    evidencias: [
+      {
+        id: 'string único, ex: ev_1',
+        document_id: 'uuid copiado de DOC_ID',
+        filename: 'string',
+        locator_type: 'page|paragraph|document',
+        locator_start: 'number|null',
+        locator_end: 'number|null',
+        quote: 'string literal',
+        verification: 'pending',
+        confirmed_by_user: false,
+      },
+    ],
     achados: [
       {
         numero: 'string',
         titulo: 'string',
         descricao: 'string (4-8 linhas)',
         fatos_apurados: 'string[] (3-8 itens factuais)',
+        fatos_referenciados: [{ text: 'string', evidence_ids: ['ev_1'] }],
         responsaveis: 'string[]',
         fundamentacao_legal: 'string[]',
         defesa_resumo: 'string|null (1-3 linhas)',

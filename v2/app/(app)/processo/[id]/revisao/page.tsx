@@ -8,7 +8,7 @@ import { MinutaSchema, type Minuta } from '@/schemas/minuta';
 type Props = { params: Promise<{ id: string }> };
 type Versao = {
   id: string;
-  origem: 'geracao' | 'ajuste' | 'restauracao';
+  origem: 'geracao' | 'ajuste' | 'restauracao' | 'edicao_manual';
   descricao: string | null;
   created_at: string;
 };
@@ -30,6 +30,10 @@ export default function RevisaoPage({ params }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [versoes, setVersoes] = useState<Versao[]>([]);
   const [restoring, setRestoring] = useState<string | null>(null);
+  const [manualDraft, setManualDraft] = useState<Minuta | null>(null);
+  const [manualEditing, setManualEditing] = useState(false);
+  const [manualPreview, setManualPreview] = useState(false);
+  const [compareVersion, setCompareVersion] = useState<{ label: string; minuta: Minuta } | null>(null);
 
   async function loadVersoes() {
     const res = await fetch(`/api/processo/${id}/versoes`, { cache: 'no-store' });
@@ -42,7 +46,7 @@ export default function RevisaoPage({ params }: Props) {
       .then((r) => r.json())
       .then((j) => {
         const parsed = MinutaSchema.safeParse(j.processo?.minuta);
-        if (parsed.success) setMinuta(parsed.data);
+        if (parsed.success) { setMinuta(parsed.data); setManualDraft(parsed.data); }
         else setError('Sem minuta válida — gere a minuta primeiro.');
       });
     loadVersoes();
@@ -63,6 +67,7 @@ export default function RevisaoPage({ params }: Props) {
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? 'falha');
       setMinuta(j.minuta);
+      setManualDraft(j.minuta);
       setInstrucao('');
       await loadVersoes();
     } catch (err) {
@@ -85,11 +90,45 @@ export default function RevisaoPage({ params }: Props) {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'falha ao restaurar');
       setMinuta(json.minuta);
+      setManualDraft(json.minuta);
       await loadVersoes();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'erro');
     } finally {
       setRestoring(null);
+    }
+  }
+
+  async function salvarEdicaoManual() {
+    if (!manualDraft) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/processo/${id}/minuta`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ minuta: manualDraft }),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error ?? 'falha ao salvar edição');
+      setMinuta(json.minuta);
+      setManualDraft(json.minuta);
+      setManualEditing(false);
+      setManualPreview(false);
+      await loadVersoes();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'erro');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function comparar(v: Versao) {
+    const response = await fetch(`/api/processo/${id}/versoes?versao_id=${v.id}`, { cache: 'no-store' });
+    const json = await response.json();
+    const parsed = MinutaSchema.safeParse(json.versao?.minuta);
+    if (response.ok && parsed.success) {
+      setCompareVersion({ label: new Date(v.created_at).toLocaleString('pt-BR'), minuta: parsed.data });
     }
   }
 
@@ -115,11 +154,50 @@ export default function RevisaoPage({ params }: Props) {
             Peça ajustes em linguagem natural. Cada solicitação reescreve uma seção específica.
           </p>
         </div>
-        <a href={`/api/minuta/docx?processo_id=${id}`} className="btn-primary">
-          <span className="material-symbols-outlined text-base">download</span>
-          Baixar DOCX
-        </a>
+        <div className="flex gap-2">
+          <button type="button" className="btn-ghost" onClick={() => { setManualDraft(minuta); setManualEditing(true); setManualPreview(false); }}>
+            <span className="material-symbols-outlined text-base">edit</span>
+            Editar diretamente
+          </button>
+          <Link href={`/processo/${id}/conferencia`} className="btn-primary">
+            Conferência final
+            <span className="material-symbols-outlined text-base">fact_check</span>
+          </Link>
+        </div>
       </header>
+
+      {manualEditing && manualDraft && (
+        <section className="card space-y-4 border-primary/30">
+          <div>
+            <h2 className="font-display text-xl text-primary">Edição manual</h2>
+            <p className="text-sm text-on-surface-variant">A versão atual será preservada antes do salvamento.</p>
+          </div>
+          {SECOES.map((item) => (
+            <label key={item.key} className="label">{item.label}
+              <textarea
+                className="input mt-2 font-sans"
+                rows={item.key === 'analise_completa' ? 16 : 8}
+                value={manualDraft[item.key]}
+                onChange={(e) => setManualDraft({ ...manualDraft, [item.key]: e.target.value })}
+              />
+            </label>
+          ))}
+          {manualPreview && (
+            <div className="compare-grid">
+              <CompareText title="Antes" minuta={minuta} />
+              <CompareText title="Depois" minuta={manualDraft} />
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-ghost" onClick={() => { setManualDraft(minuta); setManualEditing(false); }}>Cancelar</button>
+            {!manualPreview ? (
+              <button type="button" className="btn-primary" onClick={() => setManualPreview(true)}>Revisar alterações</button>
+            ) : (
+              <button type="button" className="btn-primary" onClick={salvarEdicaoManual} disabled={submitting}>{submitting ? 'Salvando...' : 'Salvar edição'}</button>
+            )}
+          </div>
+        </section>
+      )}
 
       <form onSubmit={handleAjustar} className="card space-y-3">
         <div>
@@ -178,6 +256,13 @@ export default function RevisaoPage({ params }: Props) {
                 <button
                   type="button"
                   className="btn-ghost text-xs"
+                  onClick={() => comparar(v)}
+                >
+                  Comparar
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost text-xs"
                   disabled={restoring === v.id}
                   onClick={() => restaurar(v.id)}
                 >
@@ -188,6 +273,19 @@ export default function RevisaoPage({ params }: Props) {
           </div>
         )}
       </section>
+
+      {compareVersion && (
+        <section className="card space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-xl text-primary">Comparação com {compareVersion.label}</h2>
+            <button type="button" className="btn-ghost" onClick={() => setCompareVersion(null)}>Fechar</button>
+          </div>
+          <div className="compare-grid">
+            <CompareText title="Versão anterior" minuta={compareVersion.minuta} />
+            <CompareText title="Versão atual" minuta={minuta} />
+          </div>
+        </section>
+      )}
 
       {SECOES.map((s) => (
         <section key={s.key} className="card">
@@ -204,6 +302,20 @@ export default function RevisaoPage({ params }: Props) {
           Voltar à minuta
         </Link>
       </div>
+    </div>
+  );
+}
+
+function CompareText({ title, minuta }: { title: string; minuta: Minuta }) {
+  return (
+    <div>
+      <h3 className="compare-title">{title}</h3>
+      {SECOES.map((section) => (
+        <div key={section.key} className="mb-4">
+          <strong className="text-xs uppercase tracking-wide text-primary">{section.label}</strong>
+          <pre>{minuta[section.key]}</pre>
+        </div>
+      ))}
     </div>
   );
 }

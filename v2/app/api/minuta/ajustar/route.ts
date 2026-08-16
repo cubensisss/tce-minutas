@@ -77,7 +77,14 @@ ${parsed.data.instrucao}`,
 
   const { error: updErr } = await supabase
     .from('processos')
-    .update({ minuta: novaMinuta, status: 'revisao' })
+    .update({
+      minuta: novaMinuta,
+      status: 'revisao',
+      minuta_status: 'draft',
+      minuta_approved_at: null,
+      minuta_approved_hash: null,
+      conferencia_data: {},
+    })
     .eq('id', parsed.data.processo_id);
   if (updErr) {
     log.error({ err: updErr }, 'falha ao salvar minuta ajustada');

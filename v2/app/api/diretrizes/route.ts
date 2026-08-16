@@ -10,6 +10,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { DiretrizesSchema } from '@/schemas/diretrizes';
 import { loggerFor } from '@/lib/logger';
+import { directiveBlockers } from '@/lib/conference/checks';
 
 const log = loggerFor('api/diretrizes');
 
@@ -30,11 +31,23 @@ export async function PUT(request: NextRequest) {
   }
 
   const supabase = await createServerClient();
+  const blockers = directiveBlockers(parsed.data.diretrizes);
+  if (blockers.length > 0) {
+    return NextResponse.json(
+      { error: 'diretrizes_incompletas', details: blockers },
+      { status: 409 },
+    );
+  }
   const { error } = await supabase
     .from('processos')
     .update({
       diretrizes: parsed.data.diretrizes,
       status: 'diretrizes',
+      diretrizes_confirmadas_at: new Date().toISOString(),
+      minuta_status: 'stale',
+      minuta_approved_at: null,
+      minuta_approved_hash: null,
+      conferencia_data: {},
     })
     .eq('id', parsed.data.processo_id);
 
