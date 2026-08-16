@@ -37,7 +37,7 @@ import {
 const log = loggerFor('api/minuta/gerar');
 
 export const runtime = 'nodejs';
-export const maxDuration = 600;
+export const maxDuration = 300;
 
 const Body = z.object({
   processo_id: z.string().uuid(),
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
   });
   let jurisprudenceResearch;
   try {
-    jurisprudenceResearch = await researchJurisprudence({
+    jurisprudenceResearch = await withTimeout(researchJurisprudence({
       queries: buildMinutaJurisprudenceQueries(resumoParse.data),
       resultsLimit: Math.min(Math.max(resumoParse.data.achados.length * 2 + 6, 16), 30),
       requireOfficial: true,
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
       cabinetPageSize: 20,
       cabinetTopN: 8,
       concurrency: 3,
-    });
+    }), 90_000, 'tempo_limite_pesquisa_jurisprudencial');
   } catch (err) {
     const unavailable = err instanceof OfficialJurisprudenceUnavailableError;
     log.error({ err, processo_id }, 'pesquisa jurisprudencial obrigatoria falhou');
@@ -190,8 +190,9 @@ export async function POST(request: NextRequest) {
     }),
     schema: MinutaSchema,
     temperature: 0.3,
-    timeoutMs: 240_000,
-    retries: 1,
+    timeoutMs: 120_000,
+    retries: 0,
+    structuredAttempts: 1,
   });
   const generatedMinuta = MinutaSchema.parse(generatedMinutaRaw);
   const minuta = verifyMinutaReferences(
@@ -256,4 +257,18 @@ export async function POST(request: NextRequest) {
     timings,
     jurisprudence_report: jurisprudenceResearch.report,
   });
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, code: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(code)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }

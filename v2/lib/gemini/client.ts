@@ -53,13 +53,11 @@ export async function generateText(opts: GenerateOptions): Promise<string> {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), timeoutMs);
-      try {
-        const response = await client().models.generateContent({
+      const response = await client().models.generateContent({
           model: modelName,
           contents: opts.prompt,
           config: {
+            httpOptions: { timeout: timeoutMs },
             ...(opts.system ? { systemInstruction: opts.system } : {}),
             temperature: opts.temperature ?? 0.4,
             ...(opts.json ? { responseMimeType: 'application/json' } : {}),
@@ -88,9 +86,6 @@ export async function generateText(opts: GenerateOptions): Promise<string> {
           log.debug(metadata, 'gemini ok');
         }
         return text;
-      } finally {
-        clearTimeout(t);
-      }
     } catch (err: unknown) {
       lastErr = err;
       const msg = err instanceof Error ? err.message : String(err);
@@ -132,10 +127,7 @@ export async function generateTextWithFile(opts: GenerateWithFileOptions): Promi
   let lastErr: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), timeoutMs);
-      try {
-        const response = await client().models.generateContent({
+      const response = await client().models.generateContent({
           model: modelName,
           contents: [
             {
@@ -147,6 +139,7 @@ export async function generateTextWithFile(opts: GenerateWithFileOptions): Promi
             },
           ],
           config: {
+            httpOptions: { timeout: timeoutMs },
             ...(opts.system ? { systemInstruction: opts.system } : {}),
             temperature: opts.temperature ?? 0.1,
             ...(opts.maxOutputTokens ? { maxOutputTokens: opts.maxOutputTokens } : {}),
@@ -160,9 +153,6 @@ export async function generateTextWithFile(opts: GenerateWithFileOptions): Promi
           'gemini-com-arquivo ok',
         );
         return text;
-      } finally {
-        clearTimeout(t);
-      }
     } catch (err: unknown) {
       lastErr = err;
       const msg = err instanceof Error ? err.message : String(err);
@@ -177,14 +167,22 @@ export async function generateTextWithFile(opts: GenerateWithFileOptions): Promi
 
 /** Gera + valida com Zod. Lança ZodError se a resposta não bater. */
 export async function generateJson<T>(
-  opts: Omit<GenerateOptions, 'json'> & { schema: ZodSchema<T> },
+  opts: Omit<GenerateOptions, 'json'> & {
+    schema: ZodSchema<T>;
+    /** Quantas respostas estruturadas completas podem ser solicitadas. */
+    structuredAttempts?: number;
+  },
 ): Promise<T> {
-  const { schema, ...generationOptions } = opts;
+  const { schema, structuredAttempts = 2, ...generationOptions } = opts;
   const responseSchema = toGeminiResponseSchema(schema);
   let lastError: unknown;
 
   // Se uma resposta rara chegar truncada ou invalida, gera novamente uma vez.
-  for (let structuredAttempt = 0; structuredAttempt < 2; structuredAttempt++) {
+  for (
+    let structuredAttempt = 0;
+    structuredAttempt < Math.min(Math.max(structuredAttempts, 1), 2);
+    structuredAttempt++
+  ) {
     const raw = await generateText({
       ...generationOptions,
       json: true,
@@ -207,7 +205,7 @@ export async function generateJson<T>(
 
   const detail = lastError instanceof Error ? lastError.message : String(lastError);
   throw new Error(
-    `A IA não conseguiu concluir o resultado em formato válido após duas tentativas. ` +
+    `A IA não conseguiu concluir o resultado em formato válido. ` +
       `Tente novamente. Detalhe técnico: ${detail}`,
   );
 }

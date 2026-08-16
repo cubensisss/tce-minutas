@@ -108,7 +108,7 @@ export default function MinutaPage({ params }: Props) {
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined animate-spin text-primary">progress_activity</span>
             <p className="text-on-surface-variant">
-              Pesquisando a jurisprudência e elaborando a minuta. Isso pode levar de 2 a 6 minutos.
+              Pesquisando a jurisprudência e elaborando a minuta. Isso pode levar de 2 a 5 minutos.
             </p>
           </div>
           <p className="text-xs text-on-surface-variant mt-3">
