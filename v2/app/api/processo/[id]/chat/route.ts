@@ -8,7 +8,7 @@
  *   - resumo de triagem completo
  *   - diretrizes definidas
  *   - minuta gerada (ementa, relatório, análise, dispositivo)
- *   - precedentes da fonte oficial do TCE-PE e do acervo do gabinete (cacheados)
+ *   - pesquisa ao vivo na jurisprudência quando a pergunta exigir precedentes
  *
  * Nós deliberadamente NÃO incluímos os PDFs brutos (auditoria + defesas)
  * pra manter latência de chat baixa — o resumo agora é detalhado o
@@ -24,13 +24,18 @@ import { DiretrizesSchema } from '@/schemas/diretrizes';
 import { MinutaSchema } from '@/schemas/minuta';
 import { ChatHistorySchema, type ChatMessage } from '@/schemas/chat';
 import { loadPersonaConfig } from '@/lib/config/persona';
-import { getCachedOrFetch } from '@/lib/vertex/cache';
 import { loggerFor } from '@/lib/logger';
+import {
+  formatJurisprudenceResearch,
+  OfficialJurisprudenceUnavailableError,
+  researchJurisprudence,
+  type JurisprudenceResearchQuery,
+} from '@/lib/search/jurisprudence-research';
 
 const log = loggerFor('api/processo/chat');
 
 export const runtime = 'nodejs';
-export const maxDuration = 120;
+export const maxDuration = 240;
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -103,29 +108,44 @@ export async function POST(request: NextRequest, { params }: Ctx) {
 
   const history: ChatMessage[] = historyParse.success ? historyParse.data : [];
 
-  // 2. Carrega persona e top precedentes (normalmente rápido por causa do cache)
+  // 2. Carrega persona e pesquisa a jurisprudência quando a pergunta exigir.
   const persona = await loadPersonaConfig(supabase);
 
-  let precedentesBlock = '(sem precedentes recuperados)';
-  if (resumoParse.success) {
+  let precedentesBlock = '(a pergunta atual não exige nova pesquisa jurisprudencial)';
+  if (resumoParse.success && isJurisprudenceQuestion(parsed.data.message)) {
     try {
-      const titulos = resumoParse.data.achados.map((a) => a.titulo).slice(0, 3);
-      const query = titulos.join(' | ') || resumoParse.data.processo.numero;
-      const { results } = await getCachedOrFetch(supabase, id, {
-        query,
-        pageSize: 10,
-        topN: 3,
+      const research = await researchJurisprudence({
+        queries: buildChatJurisprudenceQueries(parsed.data.message, resumoParse.data),
+        resultsLimit: 15,
+        requireOfficial: true,
+        officialPageSize: 20,
+        cabinetPageSize: 20,
+        cabinetTopN: 8,
+        concurrency: 2,
       });
-      if (results.length > 0) {
-        precedentesBlock = results
-          .map((p, i) =>
-            `### Precedente ${i + 1}${p.title ? ` — ${p.title}` : ''}
-Trecho: ${(p.snippet ?? '').replace(/<\/?b>/g, '').slice(0, 400) || '(sem trecho)'}`,
+      precedentesBlock = `${formatJurisprudenceResearch(research.report)}
+
+## Julgados selecionados
+${research.results.length > 0
+  ? research.results.map((p, i) =>
+            `### Julgado ${i + 1}${p.title ? ` — ${p.title}` : ''}
+Processo: ${p.processo ?? 'n/a'}
+Acórdão: ${p.acordao ?? 'n/a'}
+Relator(a): ${p.relator ?? 'n/a'}
+Julgamento: ${p.julgamento ?? 'n/a'}
+Link: ${p.link ?? 'n/a'}
+Consulta(s): ${p.research_queries?.join(', ') ?? 'n/a'}
+Trecho: ${(p.snippet ?? '').replace(/<\/?b>/g, '').slice(0, 2_000) || '(sem trecho)'}`,
           )
-          .join('\n\n');
-      }
+          .join('\n\n')
+  : '(nenhum julgado aderente foi selecionado nas consultas executadas)'}`;
     } catch (err) {
-      log.warn({ err }, 'falha ao carregar precedentes — segue sem');
+      const unavailable = err instanceof OfficialJurisprudenceUnavailableError;
+      log.error({ err }, 'pesquisa jurisprudencial do chat falhou');
+      return NextResponse.json({
+        error: unavailable ? 'jurisprudencia_oficial_indisponivel' : 'pesquisa_jurisprudencial_falhou',
+        message: 'Não respondi à questão jurisprudencial porque a consulta obrigatória à base oficial não pôde ser concluída.',
+      }, { status: 503 });
     }
   }
 
@@ -151,6 +171,12 @@ Diferente da geração da minuta, aqui você PODE:
 REGRAS QUE PERMANECEM:
 - ZERO invenção de jurisprudência, processos, conselheiros, datas,
   valores ou nomes que não estejam no contexto abaixo.
+- Quando a pergunta envolver jurisprudência, a base oficial é pesquisada de
+  novo usando a pergunta atual. Nunca diga que seria necessário consultar a
+  base se o relatório abaixo informa que ela já foi consultada.
+- NUNCA afirme "entendimento consolidado" ou "jurisprudência pacífica" sem
+  apoio consistente em múltiplos julgados identificados. Se a pesquisa foi
+  amostral, descreva precisamente o que foi localizado.
 - Cite SEMPRE a fonte: "no resumo de triagem", "nas diretrizes", "na
   minuta gerada (seção X)", "no precedente Y abaixo", ou "art. Z da
   Lei 12.600/2004".
@@ -253,4 +279,28 @@ ${precedentesBlock}`;
     reply: resposta.trim(),
     messages: historicoFinal,
   });
+}
+
+function isJurisprudenceQuestion(message: string) {
+  return /jurisprud|precedent|ac[oó]rd[aã]o|julgad|entendimento|consolid|tribunal|tce-?pe|relator|voto anterior/i
+    .test(message.normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+}
+
+function buildChatJurisprudenceQueries(
+  message: string,
+  resumo: z.infer<typeof ResumoSchema>,
+): JurisprudenceResearchQuery[] {
+  const findings = resumo.achados.slice(0, 5);
+  const context = [
+    ...findings.map((achado) => achado.titulo),
+    ...findings.flatMap((achado) => achado.fundamentacao_legal.slice(0, 1)),
+  ].filter(Boolean).join(' | ').slice(0, 500);
+  return [
+    {
+      label: 'Pergunta atual',
+      query: `${message} | ${findings.map((achado) => achado.titulo).join(' | ')}`.slice(0, 500),
+      maxOfficialPages: 2,
+    },
+    ...(context ? [{ label: 'Contexto dos achados', query: context, maxOfficialPages: 1 }] : []),
+  ];
 }

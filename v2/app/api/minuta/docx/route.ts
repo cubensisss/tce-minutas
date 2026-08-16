@@ -12,6 +12,7 @@ import { ResumoSchema } from '@/schemas/resumo';
 import { DiretrizesSchema } from '@/schemas/diretrizes';
 import { generationContextHash } from '@/lib/conference/checks';
 import { isApprovedForDownload } from '@/lib/minuta/approval';
+import { hasCompletedJurisprudenceResearch } from '@/lib/search/jurisprudence-research';
 
 const log = loggerFor('api/minuta/docx');
 
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
   const supabase = await createServerClient();
   const { data: processo, error } = await supabase
     .from('processos')
-    .select('numero, unidade_jurisdicionada, exercicio, interessados, relator, minuta, resumo_data, diretrizes, minuta_status, minuta_approved_hash, minuta_context_hash')
+    .select('numero, unidade_jurisdicionada, exercicio, interessados, relator, minuta, resumo_data, diretrizes, minuta_status, minuta_approved_hash, minuta_context_hash, minuta_meta')
     .eq('id', processoId)
     .single();
 
@@ -41,6 +42,14 @@ export async function GET(request: NextRequest) {
   const currentContextHash = resumoParse.success && diretrizesParse.success
     ? generationContextHash(resumoParse.data, diretrizesParse.data)
     : null;
+  if (!hasCompletedJurisprudenceResearch(
+    (processo.minuta_meta as { jurisprudence?: unknown } | null)?.jurisprudence,
+  )) {
+    return NextResponse.json({
+      error: 'jurisprudencia_nao_pesquisada',
+      message: 'Regenere a minuta para concluir a pesquisa obrigatória na jurisprudência do TCE-PE.',
+    }, { status: 409 });
+  }
   if (!isApprovedForDownload({
     status: processo.minuta_status,
     approvedHash: processo.minuta_approved_hash,

@@ -9,12 +9,23 @@ import JobProgress from '@/components/JobProgress';
 
 type Props = { params: Promise<{ id: string }> };
 
+type JurisprudenceMeta = {
+  searchedAt: string;
+  officialDatabaseQueried: true;
+  officialCandidatesRead: number;
+  cabinetCandidatesRead: number;
+  selectedResults: number;
+  officialSearchWasExhaustive: boolean;
+  queries: unknown[];
+};
+
 export default function MinutaPage({ params }: Props) {
   const { id } = use(params);
   const [minuta, setMinuta] = useState<Minuta | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
+  const [jurisprudenceMeta, setJurisprudenceMeta] = useState<JurisprudenceMeta | null>(null);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -25,6 +36,9 @@ export default function MinutaPage({ params }: Props) {
         const res = await fetch(`/api/processo/${id}`);
         const json = await res.json();
         const existing = MinutaSchema.safeParse(json.processo?.minuta);
+        if (!cancelled) {
+          setJurisprudenceMeta(parseJurisprudenceMeta(json.processo?.minuta_meta?.jurisprudence));
+        }
         if (existing.success) {
           if (!cancelled) {
             setMinuta(existing.data);
@@ -67,8 +81,9 @@ export default function MinutaPage({ params }: Props) {
         body: JSON.stringify({ processo_id: id, job_id: currentJobId }),
       });
       const j = await res.json();
-      if (!res.ok) throw new Error(j.error ?? 'falha ao gerar minuta');
+      if (!res.ok) throw new Error(j.message ?? j.error ?? 'falha ao gerar minuta');
       setMinuta(j.minuta);
+      setJurisprudenceMeta(parseJurisprudenceMeta(j.jurisprudence_report));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'erro');
     } finally {
@@ -93,11 +108,11 @@ export default function MinutaPage({ params }: Props) {
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined animate-spin text-primary">progress_activity</span>
             <p className="text-on-surface-variant">
-              Elaborando a minuta de voto. Isso pode levar 60–180 segundos.
+              Pesquisando a jurisprudência e elaborando a minuta. Isso pode levar de 2 a 6 minutos.
             </p>
           </div>
           <p className="text-xs text-on-surface-variant mt-3">
-            O Gemini Pro está consultando os documentos, as diretrizes e precedentes de todo o TCE-PE, além do acervo do gabinete.
+            Antes de redigir, o sistema consulta obrigatoriamente a base oficial de julgados do TCE-PE para cada achado, com o acervo do gabinete como fonte complementar.
           </p>
           <JobProgress jobId={jobId} />
         </div>
@@ -175,6 +190,38 @@ export default function MinutaPage({ params }: Props) {
         </div>
       )}
 
+      {jurisprudenceMeta ? (
+        <section className="card border-primary/30 bg-primary-container/20">
+          <h2 className="font-semibold flex items-center gap-2">
+            <span className="material-symbols-outlined text-base">account_balance</span>
+            Pesquisa jurisprudencial realizada
+          </h2>
+          <p className="text-sm mt-1 text-on-surface-variant">
+            A base oficial do TCE-PE foi consultada em{' '}
+            {new Date(jurisprudenceMeta.searchedAt).toLocaleString('pt-BR')} por meio de{' '}
+            {jurisprudenceMeta.queries.length} consulta(s). Foram lidos{' '}
+            {jurisprudenceMeta.officialCandidatesRead} resultado(s) oficiais e{' '}
+            {jurisprudenceMeta.cabinetCandidatesRead} do acervo do gabinete;{' '}
+            {jurisprudenceMeta.selectedResults} foram selecionados para fundamentar a redação.
+          </p>
+          {!jurisprudenceMeta.officialSearchWasExhaustive && (
+            <p className="text-xs mt-2 text-on-surface-variant">
+              Como algumas consultas tiveram muitas correspondências, foram usadas páginas distribuídas no acervo. A minuta não deve tratar a jurisprudência como consolidada sem múltiplos julgados convergentes.
+            </p>
+          )}
+        </section>
+      ) : (
+        <section className="card notice-warning">
+          <h2 className="font-semibold flex items-center gap-2">
+            <span className="material-symbols-outlined text-base">warning</span>
+            Minuta anterior à pesquisa jurisprudencial obrigatória
+          </h2>
+          <p className="text-sm mt-1">
+            Regenere esta minuta para pesquisar a base oficial do TCE-PE e registrar os julgados utilizados.
+          </p>
+        </section>
+      )}
+
       <section className="card notice-warning">
         <h2 className="font-semibold flex items-center gap-2">
           <span className="material-symbols-outlined text-base">lock</span>
@@ -233,6 +280,21 @@ function sectionLabel(section: Minuta['referencias'][number]['section']) {
     analise_completa: 'Análise',
     decisao_voto: 'Dispositivo',
   }[section];
+}
+
+function parseJurisprudenceMeta(value: unknown): JurisprudenceMeta | null {
+  if (!value || typeof value !== 'object') return null;
+  const item = value as Partial<JurisprudenceMeta>;
+  if (
+    item.officialDatabaseQueried !== true
+    || typeof item.searchedAt !== 'string'
+    || typeof item.officialCandidatesRead !== 'number'
+    || typeof item.cabinetCandidatesRead !== 'number'
+    || typeof item.selectedResults !== 'number'
+    || typeof item.officialSearchWasExhaustive !== 'boolean'
+    || !Array.isArray(item.queries)
+  ) return null;
+  return item as JurisprudenceMeta;
 }
 
 function Section({ title, children }: { title: string; children: string }) {

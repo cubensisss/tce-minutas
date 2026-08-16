@@ -83,4 +83,6 @@ export type SimilarResult = {
   acordao?: string | null;
   relator?: string | null;
   julgamento?: string | null;
+  /** Consultas da pesquisa aprofundada para as quais o resultado foi selecionado. */
+  research_queries?: string[];
 };

@@ -27,6 +27,8 @@ export type BuildMinutaInput = {
   diretrizes: Diretrizes;
   documentosBrutos: Array<{ filename: string; text: string }>;
   precedentes: SimilarResult[];
+  /** Relatório auditável da pesquisa obrigatória realizada antes da redação. */
+  jurisprudenceResearch: string;
 };
 
 export function buildMinutaSystemPrompt(
@@ -104,12 +106,15 @@ export function buildMinutaUserPrompt(input: BuildMinutaInput): string {
               `### Precedente ${i + 1} | RESULT_ID=${p.id}${p.title ? ` — ${p.title}` : ''}
 Processo: ${p.processo ?? 'n/a'}
 Acórdão: ${p.acordao ?? 'n/a'}
+Relator(a): ${p.relator ?? 'n/a'}
+Data do julgamento: ${p.julgamento ?? 'n/a'}
+Consulta(s) relacionada(s): ${p.research_queries?.join(', ') ?? 'n/a'}
 Link: ${p.link ?? 'n/a'}
 Trecho relevante:
 ${p.snippet ?? '(sem trecho)'}`,
           )
           .join('\n\n')
-      : '(sem precedentes encontrados na base vetorial)';
+      : '(a pesquisa obrigatória foi executada, mas nenhum precedente aderente foi selecionado)';
 
   return `# RESUMO DO PROCESSO (extraído na triagem)
 ${JSON.stringify(input.resumo, null, 2)}
@@ -120,6 +125,9 @@ ${JSON.stringify(input.diretrizes, null, 2)}
 # DOCUMENTOS BRUTOS (fonte primária — extrair citações literais daqui)
 ${docsBlock}
 
+# RELATÓRIO DA PESQUISA JURISPRUDENCIAL OBRIGATÓRIA
+${input.jurisprudenceResearch}
+
 # PRECEDENTES JURISPRUDENCIAIS DO TCE-PE
 # Esta é a SUA FONTE de jurisprudência. Leia cada trecho com atenção:
 # - NUNCA chame de "Precedente 1", "Precedente 2", etc. na minuta gerada.
@@ -128,6 +136,14 @@ ${docsBlock}
 # - Aproveite a fundamentação dos trechos (teses, dispositivos, raciocínio)
 #   para enriquecer a Análise do Relator do achado correspondente.
 # - Use um precedente apenas no achado a que ele for materialmente aderente.
+# - A pesquisa na base oficial já foi realizada antes da redação. Não afirme
+#   que não houve pesquisa nem diga que seria necessário consultar a base.
+# - NUNCA escreva "entendimento consolidado", "jurisprudência pacífica" ou
+#   expressão equivalente apenas por semelhança doutrinária. Essa conclusão
+#   exige apoio consistente em múltiplos julgados identificados neste bloco.
+# - A inexistência de precedente aderente entre os resultados selecionados
+#   deve ser declarada apenas como ausência de precedente localizado nas
+#   consultas executadas, nunca como inexistência absoluta no Tribunal.
 # - Para todo precedente nominalmente citado, crie uma entrada em "referencias"
 #   copiando RESULT_ID, processo, acórdão, link e trecho exatamente deste bloco.
 ${precedentesBlock}

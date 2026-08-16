@@ -4,8 +4,8 @@
  * Painel de chat sobre o processo, embaixo da minuta. Carrega o
  * histórico (GET), permite enviar nova mensagem (POST) e limpar (DELETE).
  *
- * Latência típica: ~3-8s por turno (Gemini Flash + contexto carregado).
- * O input fica desabilitado durante a chamada.
+ * Perguntas jurisprudenciais fazem uma nova consulta à base oficial e podem
+ * levar mais tempo. O input fica desabilitado durante a chamada.
  */
 import { useEffect, useRef, useState } from 'react';
 import type { ChatMessage } from '@/schemas/chat';
@@ -26,6 +26,7 @@ export default function ProcessoChat({ processoId }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [researching, setResearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -56,6 +57,7 @@ export default function ProcessoChat({ processoId }: Props) {
     const text = (message ?? input).trim();
     if (!text || sending) return;
     setSending(true);
+    setResearching(isJurisprudenceQuestion(text));
     setError(null);
     setInput('');
     // Otimista: adiciona a mensagem do usuário antes da resposta chegar
@@ -73,7 +75,7 @@ export default function ProcessoChat({ processoId }: Props) {
         body: JSON.stringify({ message: text }),
       });
       const j = await res.json();
-      if (!res.ok) throw new Error(j.error ?? 'erro ao enviar');
+      if (!res.ok) throw new Error(j.message ?? j.error ?? 'erro ao enviar');
       setMessages(j.messages);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'erro');
@@ -82,6 +84,7 @@ export default function ProcessoChat({ processoId }: Props) {
       setInput(text);
     } finally {
       setSending(false);
+      setResearching(false);
     }
   }
 
@@ -108,8 +111,8 @@ export default function ProcessoChat({ processoId }: Props) {
           </h2>
           <p className="text-sm text-on-surface-variant mt-1">
             Tire dúvidas, explore o mérito, peça verificações. O assistente
-            tem o resumo, as diretrizes, a minuta e os precedentes na janela
-            de contexto.
+            tem o resumo, as diretrizes e a minuta. Perguntas sobre jurisprudência
+            acionam uma nova pesquisa na base oficial do TCE-PE.
           </p>
         </div>
         {messages.length > 0 && (
@@ -153,7 +156,7 @@ export default function ProcessoChat({ processoId }: Props) {
               {sending && (
                 <div className="flex items-center gap-2 text-on-surface-variant text-sm py-2">
                   <span className="material-symbols-outlined animate-spin text-primary text-base">progress_activity</span>
-                  Pensando...
+                  {researching ? 'Pesquisando a jurisprudência oficial...' : 'Pensando...'}
                 </div>
               )}
             </div>
@@ -193,6 +196,12 @@ export default function ProcessoChat({ processoId }: Props) {
       )}
     </section>
   );
+}
+
+function isJurisprudenceQuestion(message: string) {
+  const normalized = message.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return /jurisprud|precedent|acordao|julgad|entendimento|consolid|tribunal|tce-?pe|relator|voto anterior/i
+    .test(normalized);
 }
 
 function Bubble({ message }: { message: ChatMessage }) {

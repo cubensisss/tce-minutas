@@ -4,7 +4,8 @@
  *  - persona da Conselheira
  *  - resumo + diretrizes
  *  - documentos brutos extraídos do Storage
- *  - precedentes oficiais do TCE-PE e do acervo vetorial (cacheados)
+ *  - pesquisa obrigatória e ao vivo na jurisprudência oficial do TCE-PE
+ *  - acervo vetorial do gabinete como fonte complementar
  *
  * Body: { processo_id }
  */
@@ -19,7 +20,6 @@ import { ResumoSchema } from '@/schemas/resumo';
 import { DiretrizesSchema } from '@/schemas/diretrizes';
 import { buildMinutaSystemPrompt, buildMinutaUserPrompt } from '@/prompts/minuta';
 import { loadPersonaConfig } from '@/lib/config/persona';
-import { getCachedOrFetch } from '@/lib/vertex/cache';
 import { loggerFor } from '@/lib/logger';
 import { elapsedMs, updateJobProgress } from '@/lib/jobs/progress';
 import { saveMinutaVersion } from '@/lib/minuta/versioning';
@@ -27,11 +27,17 @@ import { buildExtractionArtifact, formatArtifactForPrompt, loadExtractionArtifac
 import { directiveBlockers, generationContextHash } from '@/lib/conference/checks';
 import { contentHash, verifyMinutaReferences } from '@/lib/evidence/verify';
 import { getEnv } from '@/lib/env';
+import {
+  buildMinutaJurisprudenceQueries,
+  formatJurisprudenceResearch,
+  OfficialJurisprudenceUnavailableError,
+  researchJurisprudence,
+} from '@/lib/search/jurisprudence-research';
 
 const log = loggerFor('api/minuta/gerar');
 
 export const runtime = 'nodejs';
-export const maxDuration = 300;
+export const maxDuration = 600;
 
 const Body = z.object({
   processo_id: z.string().uuid(),
@@ -110,25 +116,50 @@ export async function POST(request: NextRequest) {
   );
   timings.documentos_ms = elapsedMs(docsStarted);
 
-  // 3. Carrega persona + busca precedentes
+  // 3. Carrega persona + pesquisa obrigatória na jurisprudência
   const persona = await loadPersonaConfig(supabase);
-  const queryParaSimilares = buildSimilaresQuery(resumoParse.data);
   const searchStarted = performance.now();
   await updateJobProgress(supabase, job_id, {
-    phase: 'precedentes', message: 'Buscando e ordenando precedentes...', progress: 42, timings,
+    phase: 'precedentes', message: 'Pesquisando a jurisprudência oficial por achado...', progress: 42, timings,
   });
-  const { results: precedentes } = await getCachedOrFetch(supabase, processo_id, {
-    query: queryParaSimilares,
-    pageSize: 20,
-    // 6 precedentes (era 3) — mais fundamentação e mais números de acórdão
-    // reais para o modelo citar. Combinado com mais trechos por documento.
-    topN: 6,
-  });
+  let jurisprudenceResearch;
+  try {
+    jurisprudenceResearch = await researchJurisprudence({
+      queries: buildMinutaJurisprudenceQueries(resumoParse.data),
+      resultsLimit: Math.min(Math.max(resumoParse.data.achados.length * 2 + 6, 16), 30),
+      requireOfficial: true,
+      officialPageSize: 20,
+      cabinetPageSize: 20,
+      cabinetTopN: 8,
+      concurrency: 3,
+    });
+  } catch (err) {
+    const unavailable = err instanceof OfficialJurisprudenceUnavailableError;
+    log.error({ err, processo_id }, 'pesquisa jurisprudencial obrigatoria falhou');
+    await updateJobProgress(supabase, job_id, {
+      phase: 'precedentes',
+      message: unavailable
+        ? 'A base oficial do TCE-PE está indisponível. A minuta não foi gerada.'
+        : 'A pesquisa jurisprudencial falhou. A minuta não foi gerada.',
+      progress: 42,
+      timings,
+    }, 'error');
+    return NextResponse.json({
+      error: unavailable ? 'jurisprudencia_oficial_indisponivel' : 'pesquisa_jurisprudencial_falhou',
+      message: 'A geração foi interrompida porque a pesquisa obrigatória na jurisprudência não pôde ser concluída.',
+    }, { status: 503 });
+  }
+  const precedentes = jurisprudenceResearch.results;
   timings.precedentes_ms = elapsedMs(searchStarted);
 
   // 4. Gera com Gemini Pro
   log.info(
-    { processo_id, docs: documentosBrutos.length, precedentes: precedentes.length },
+    {
+      processo_id,
+      docs: documentosBrutos.length,
+      precedentes: precedentes.length,
+      jurisprudencia: jurisprudenceResearch.report,
+    },
     'gerando minuta',
   );
   const generationStarted = performance.now();
@@ -155,6 +186,7 @@ export async function POST(request: NextRequest) {
       diretrizes: diretrizesParse.data,
       documentosBrutos,
       precedentes,
+      jurisprudenceResearch: formatJurisprudenceResearch(jurisprudenceResearch.report),
     }),
     schema: MinutaSchema,
     temperature: 0.3,
@@ -196,7 +228,7 @@ export async function POST(request: NextRequest) {
       conferencia_data: {},
       minuta_meta: {
         model: env.GEMINI_PRO_MODEL,
-        prompt_version: 'verificavel-v1',
+        prompt_version: 'jurisprudencia-obrigatoria-v2',
         generated_at: new Date().toISOString(),
         context_hash: contextHash,
         documents_hash: contentHash((docs ?? []).map((doc) => ({
@@ -204,6 +236,7 @@ export async function POST(request: NextRequest) {
           path: doc.storage_path,
           extraction_path: doc.extraction_storage_path,
         }))),
+        jurisprudence: jurisprudenceResearch.report,
       },
     })
     .eq('id', processo_id);
@@ -217,15 +250,10 @@ export async function POST(request: NextRequest) {
     phase: 'concluido', message: 'Minuta concluida.', progress: 100, timings,
   }, 'done');
 
-  return NextResponse.json({ ok: true, minuta, timings });
-}
-
-/**
- * Constrói a query de busca dos precedentes a partir do resumo.
- * Concatena o título de cada achado — boa cobertura sem ficar muito longo.
- */
-function buildSimilaresQuery(resumo: z.infer<typeof ResumoSchema>): string {
-  const titulos = resumo.achados.map((a) => a.titulo).filter(Boolean).slice(0, 5);
-  const base = titulos.join(' | ');
-  return base.length > 0 ? base : resumo.processo.descricao_objeto ?? resumo.processo.numero;
+  return NextResponse.json({
+    ok: true,
+    minuta,
+    timings,
+    jurisprudence_report: jurisprudenceResearch.report,
+  });
 }

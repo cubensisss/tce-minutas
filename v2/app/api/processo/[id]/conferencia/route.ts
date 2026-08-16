@@ -5,6 +5,7 @@ import { ResumoSchema, type Resumo } from '@/schemas/resumo';
 import { DiretrizesSchema, type Diretrizes } from '@/schemas/diretrizes';
 import { MinutaSchema, type Minuta } from '@/schemas/minuta';
 import { buildConferenceReport, generationContextHash } from '@/lib/conference/checks';
+import { hasCompletedJurisprudenceResearch } from '@/lib/search/jurisprudence-research';
 
 export const runtime = 'nodejs';
 type Ctx = { params: Promise<{ id: string }> };
@@ -28,6 +29,7 @@ type ProcessState = {
   minuta_context_hash: string | null;
   minuta_approved_at: string | null;
   minuta_approved_hash: string | null;
+  minuta_meta: unknown;
 };
 
 async function loadState(id: string) {
@@ -35,7 +37,7 @@ async function loadState(id: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: NextResponse.json({ error: 'unauthorized' }, { status: 401 }) };
   const { data, error } = await supabase.from('processos').select(
-    'resumo_data, diretrizes, minuta, resumo_confirmado_at, diretrizes_confirmadas_at, minuta_status, minuta_context_hash, minuta_approved_at, minuta_approved_hash',
+    'resumo_data, diretrizes, minuta, resumo_confirmado_at, diretrizes_confirmadas_at, minuta_status, minuta_context_hash, minuta_approved_at, minuta_approved_hash, minuta_meta',
   ).eq('id', id).single();
   if (error || !data) return { error: NextResponse.json({ error: 'not_found' }, { status: 404 }) };
   const resumo = ResumoSchema.safeParse(data.resumo_data);
@@ -57,6 +59,9 @@ function reportFor(state: ProcessState, resumo: Resumo, diretrizes: Diretrizes, 
     minutaStatus: state.minuta_status,
     storedContextHash: state.minuta_context_hash,
     currentContextHash: generationContextHash(resumo, diretrizes),
+    jurisprudenceResearchCompleted: hasCompletedJurisprudenceResearch(
+      (state.minuta_meta as { jurisprudence?: unknown } | null)?.jurisprudence,
+    ),
   });
 }
 

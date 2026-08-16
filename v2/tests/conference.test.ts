@@ -73,6 +73,7 @@ describe('conferência verificável', () => {
       resumoConfirmedAt: new Date().toISOString(),
       diretrizesConfirmedAt: new Date().toISOString(),
       minutaStatus: 'draft', storedContextHash: hash, currentContextHash: hash,
+      jurisprudenceResearchCompleted: true,
     });
     expect(report.ready).toBe(true);
     expect(report.blockers).toBe(0);
@@ -85,6 +86,7 @@ describe('conferência verificável', () => {
       resumo, diretrizes, minuta,
       resumoConfirmedAt: '2026-01-01', diretrizesConfirmedAt: '2026-01-01',
       minutaStatus: 'stale', storedContextHash: 'antigo', currentContextHash: 'novo',
+      jurisprudenceResearchCompleted: true,
     });
     expect(report.ready).toBe(false);
     expect(report.checks.find((check) => check.id === 'contexto_atual')?.ok).toBe(false);
@@ -107,9 +109,23 @@ describe('conferência verificável', () => {
       resumo, diretrizes, minuta,
       resumoConfirmedAt: '2026-01-01', diretrizesConfirmedAt: '2026-01-01',
       minutaStatus: 'draft', storedContextHash: hash, currentContextHash: hash,
+      jurisprudenceResearchCompleted: true,
     });
     expect(report.checks.find((check) => check.id === 'evidencias_validas')?.ok).toBe(true);
     expect(report.checks.find((check) => check.id === 'evidencias_confirmadas')?.ok).toBe(true);
+  });
+
+  it('bloqueia minuta gerada sem pesquisa registrada na jurisprudência oficial', () => {
+    const { resumo, diretrizes, minuta } = state();
+    const hash = generationContextHash(resumo, diretrizes);
+    const report = buildConferenceReport({
+      resumo, diretrizes, minuta,
+      resumoConfirmedAt: '2026-01-01', diretrizesConfirmedAt: '2026-01-01',
+      minutaStatus: 'draft', storedContextHash: hash, currentContextHash: hash,
+      jurisprudenceResearchCompleted: false,
+    });
+    expect(report.checks.find((check) => check.id === 'jurisprudencia_pesquisada')?.ok).toBe(false);
+    expect(report.ready).toBe(false);
   });
 
   it('recusa DOCX antes da aprovação e após qualquer alteração do hash', () => {

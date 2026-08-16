@@ -53,6 +53,7 @@ export function buildConferenceReport(input: {
   minutaStatus: string | null;
   storedContextHash: string | null;
   currentContextHash: string;
+  jurisprudenceResearchCompleted: boolean;
 }): ConferenceReport {
   const checks: ConferenceCheck[] = [];
   const add = (item: ConferenceCheck) => checks.push(item);
@@ -124,6 +125,15 @@ export function buildConferenceReport(input: {
     item.verification === 'invalid' || !sectionText[item.section].includes(item.excerpt),
   );
   const unconfirmedMinuteRefs = input.minuta.referencias.filter((item) => !item.confirmed_by_user);
+  add({
+    id: 'jurisprudencia_pesquisada',
+    group: 'precedentes',
+    label: 'Base oficial de jurisprudência pesquisada',
+    detail: input.jurisprudenceResearchCompleted
+      ? 'A pesquisa obrigatória no banco de julgados do TCE-PE foi registrada nesta geração.'
+      : 'Regenere a minuta para executar e registrar a pesquisa obrigatória no banco de julgados do TCE-PE.',
+    ok: input.jurisprudenceResearchCompleted,
+  });
   add({
     id: 'referencias_minuta', group: 'documentos', label: 'Minuta vinculada às evidências',
     detail: `${documentRefs.length} referência(s) documental(is); ${invalidMinuteRefs.length} inválida(s).`,
