@@ -37,4 +37,36 @@ describe('pesquisa oficial de jurisprudência', () => {
     expect(report.results).toHaveLength(30);
     expect(report.truncated).toBe(true);
   });
+
+  it('amplia automaticamente uma consulta tematica que retornou zero', async () => {
+    const attempted: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      const query = url.searchParams.get('todasBaseDescricao.equals') ?? '';
+      attempted.push(query);
+      const found = query === 'execucao fisica';
+      return new Response(JSON.stringify(found ? [{
+        numeroProcessoProcesso: '24100001-0',
+        numeroDeliberacaoProcesso: '100',
+        anoDeliberacaoProcesso: 2026,
+        descricaoTipoProcessoProcesso: 'Auditoria Especial',
+        descricaoItdProcesso: 'Medição incompatível com a execução física.',
+      }] : []), {
+        status: 200,
+        headers: { 'x-total-count': found ? '1' : '0', 'content-type': 'application/json' },
+      });
+    }));
+
+    const report = await searchTceJurisprudenciaDetailed(
+      'Medições de serviços em quantidades incompatíveis com a execução física | Lei 14.133/2021',
+      { pageSize: 10, maxPages: 2 },
+    );
+
+    expect(attempted).toEqual([
+      'Medições de serviços em quantidades incompatíveis com a execução física',
+      'execucao fisica',
+    ]);
+    expect(report.effectiveQuery).toBe('execucao fisica');
+    expect(report.results).toHaveLength(1);
+  });
 });

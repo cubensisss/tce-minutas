@@ -28,6 +28,8 @@ describe('pesquisa jurisprudencial obrigatória', () => {
   it('preserva cobertura de cada consulta na seleção final', async () => {
     officialSearch.mockImplementation(async (query: string) => ({
       query,
+      effectiveQuery: query,
+      attemptedQueries: [query],
       results: [{
         id: `tce:${query}`,
         title: query,
@@ -62,6 +64,8 @@ describe('pesquisa jurisprudencial obrigatória', () => {
     );
     expect(hasCompletedJurisprudenceResearch(research.report)).toBe(true);
     expect(research.report.officialSearchWasExhaustive).toBe(true);
+    expect(research.report.selectedSources).toHaveLength(2);
+    expect(research.report.selectedSources.every((item) => item.source === 'tcepe_oficial')).toBe(true);
   });
 
   it('interrompe a pesquisa quando a base oficial falha', async () => {

@@ -17,14 +17,14 @@ import { extractFromBuffer } from '@/lib/pdf/extract';
 import { generateJson } from '@/lib/gemini/client';
 import { MinutaSchema } from '@/schemas/minuta';
 import { ResumoSchema } from '@/schemas/resumo';
-import { DiretrizesSchema } from '@/schemas/diretrizes';
+import { DiretrizesSchema, diretrizesForGeneration } from '@/schemas/diretrizes';
 import { buildMinutaSystemPrompt, buildMinutaUserPrompt } from '@/prompts/minuta';
 import { loadPersonaConfig } from '@/lib/config/persona';
 import { loggerFor } from '@/lib/logger';
 import { elapsedMs, updateJobProgress } from '@/lib/jobs/progress';
 import { saveMinutaVersion } from '@/lib/minuta/versioning';
 import { buildExtractionArtifact, formatArtifactForPrompt, loadExtractionArtifact } from '@/lib/storage/extraction';
-import { directiveBlockers, generationContextHash } from '@/lib/conference/checks';
+import { directiveBlockers, generationContextHash, inactiveSanctionConflicts } from '@/lib/conference/checks';
 import { contentHash, verifyMinutaReferences } from '@/lib/evidence/verify';
 import { getEnv } from '@/lib/env';
 import {
@@ -108,7 +108,8 @@ async function generateMinuta(request: NextRequest) {
   if (!processo.resumo_confirmado_at) {
     return NextResponse.json({ error: 'resumo_nao_confirmado' }, { status: 409 });
   }
-  const pendingDirectives = directiveBlockers(diretrizesParse.data);
+  const generationDiretrizes = diretrizesForGeneration(diretrizesParse.data);
+  const pendingDirectives = directiveBlockers(generationDiretrizes);
   if (!processo.diretrizes_confirmadas_at || pendingDirectives.length > 0) {
     return NextResponse.json(
       { error: 'diretrizes_nao_confirmadas', details: pendingDirectives },
@@ -212,7 +213,7 @@ async function generateMinuta(request: NextRequest) {
       precedentesObrigatorios: persona.precedentesObrigatorios,
       limiteLegalArt73: persona.limiteLegalArt73,
       resumo: resumoParse.data,
-      diretrizes: diretrizesParse.data,
+      diretrizes: generationDiretrizes,
       documentosBrutos,
       precedentes,
       jurisprudenceResearch: formatJurisprudenceResearch(jurisprudenceResearch.report),
@@ -230,6 +231,21 @@ async function generateMinuta(request: NextRequest) {
     resumoParse.data,
     precedentes,
   );
+  const sanctionConflicts = inactiveSanctionConflicts(generationDiretrizes, minuta);
+  if (sanctionConflicts.length > 0) {
+    log.error({ processo_id, sanctionConflicts }, 'minuta divergiu das sancoes confirmadas');
+    await updateJobProgress(supabase, job_id, {
+      phase: 'erro',
+      message: 'A redação da IA contrariou uma sanção desmarcada e foi descartada com segurança.',
+      progress: 90,
+      timings,
+    }, 'error');
+    return NextResponse.json({
+      error: 'minuta_divergente_diretrizes',
+      message: 'A IA tentou incluir uma sanção desmarcada. A minuta não foi salva; tente gerar novamente.',
+      details: sanctionConflicts,
+    }, { status: 422 });
+  }
   timings.redacao_ms = elapsedMs(generationStarted);
 
   await updateJobProgress(supabase, job_id, {
@@ -245,7 +261,7 @@ async function generateMinuta(request: NextRequest) {
   });
 
   // 5. Persiste a minuta
-  const contextHash = generationContextHash(resumoParse.data, diretrizesParse.data);
+  const contextHash = generationContextHash(resumoParse.data, generationDiretrizes);
   const env = getEnv();
   const { error: updErr } = await supabase
     .from('processos')

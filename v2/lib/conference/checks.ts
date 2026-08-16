@@ -1,5 +1,5 @@
 import type { Resumo } from '@/schemas/resumo';
-import type { Diretrizes } from '@/schemas/diretrizes';
+import { diretrizesForGeneration, type Diretrizes } from '@/schemas/diretrizes';
 import type { Minuta } from '@/schemas/minuta';
 import { contentHash } from '@/lib/evidence/verify';
 
@@ -41,6 +41,24 @@ export function directiveBlockers(diretrizes: Diretrizes): string[] {
     if (achado.debito.imputar && !achado.debito.valor.trim()) errors.push(`${prefix}: valor do débito ausente`);
     if (achado.medida.aplicar && !achado.medida.texto.trim()) errors.push(`${prefix}: texto da medida ausente`);
   }
+  return errors;
+}
+
+/**
+ * Verificacao de seguranca para impedir que a redacao da IA reintroduza uma
+ * consequencia expressamente desmarcada nas diretrizes confirmadas.
+ */
+export function inactiveSanctionConflicts(diretrizes: Diretrizes, minuta: Minuta): string[] {
+  const text = [minuta.ementa, minuta.analise_completa, minuta.decisao_voto].join('\n');
+  const errors: string[] = [];
+  if (
+    diretrizes.achados.every((achado) => !achado.multa.aplicar)
+    && containsAffirmativeSanction(text, 'multa')
+  ) errors.push('A minuta aplicou multa, mas todas as multas foram desmarcadas.');
+  if (
+    diretrizes.achados.every((achado) => !achado.debito.imputar)
+    && containsAffirmativeSanction(text, 'debito')
+  ) errors.push('A minuta imputou debito, mas todos os debitos foram desmarcados.');
   return errors;
 }
 
@@ -180,6 +198,17 @@ export function buildConferenceReport(input: {
     }
   }
 
+  const inactiveConflicts = inactiveSanctionConflicts(input.diretrizes, input.minuta);
+  add({
+    id: 'sancoes_desmarcadas_ausentes',
+    group: 'dispositivo',
+    label: 'Sanções desmarcadas não foram aplicadas',
+    detail: inactiveConflicts.length === 0
+      ? 'A minuta respeita as decisões de não aplicar multa e débito.'
+      : inactiveConflicts.join(' '),
+    ok: inactiveConflicts.length === 0,
+  });
+
   const hasVerifyMarker = /\[VERIFICAR\s*:/i.test([
     input.minuta.ementa, input.minuta.relatorio, input.minuta.analise_completa,
     input.minuta.decisao_voto, input.minuta.sugestao_pendente ?? '',
@@ -209,7 +238,23 @@ export function generationContextHash(resumo: Resumo, diretrizes: Diretrizes): s
     ...resumo,
     evidencias: resumo.evidencias.map(({ confirmed_by_user: _confirmed, ...evidence }) => evidence),
   };
-  return contentHash({ resumo: normalizedResumo, diretrizes });
+  return contentHash({ resumo: normalizedResumo, diretrizes: diretrizesForGeneration(diretrizes) });
+}
+
+function containsAffirmativeSanction(value: string, sanction: 'multa' | 'debito'): boolean {
+  const normalized = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const keyword = sanction === 'multa' ? 'multa' : 'debito';
+  const segments = normalized.split(/(?<=[.;:\n])/);
+  return segments.some((segment) => {
+    if (!segment.includes(keyword)) return false;
+    if (
+      /(?:nao|sem)\s+(?:a\s+)?(?:aplicacao|imputacao|aplicar|imputar)/.test(segment)
+      || /(?:afastar|dispensar|deixar\s+de\s+aplicar|nao\s+aplicar)/.test(segment)
+    ) return false;
+    return sanction === 'multa'
+      ? /(?:aplicar|aplicacao|impor|imposicao|cominar|fixar|condenar)[^.;\n]{0,100}multa|multa[^.;\n]{0,100}(?:r\$|\d+\s*%|art\.?\s*73)/.test(segment)
+      : /(?:imputar|imputacao|ressarcir|ressarcimento|condenar)[^.;\n]{0,100}debito|debito[^.;\n]{0,100}r\$/.test(segment);
+  });
 }
 
 function normalize(value: string): string {

@@ -17,6 +17,8 @@ export type JurisprudenceQueryReport = {
   query: string;
   officialTotalMatches: number | null;
   officialCandidatesRead: number;
+  officialEffectiveQuery: string;
+  officialAttemptedQueries: string[];
   officialPagesFetched: number[];
   officialTruncated: boolean;
   oldestJudgment: string | null;
@@ -32,6 +34,19 @@ export type JurisprudenceResearchReport = {
   cabinetCandidatesRead: number;
   selectedResults: number;
   officialSearchWasExhaustive: boolean;
+  selectedSources: JurisprudenceSelectedSource[];
+};
+
+export type JurisprudenceSelectedSource = {
+  id: string;
+  title: string | null;
+  link: string | null;
+  source: 'tcepe_oficial' | 'vertex_gabinete';
+  processo: string | null;
+  acordao: string | null;
+  relator: string | null;
+  julgamento: string | null;
+  researchQueries: string[];
 };
 
 export type JurisprudenceResearch = {
@@ -152,6 +167,8 @@ export async function researchJurisprudence(
     query: item.query,
     officialTotalMatches: official.totalMatches,
     officialCandidatesRead: official.results.length,
+    officialEffectiveQuery: official.effectiveQuery,
+    officialAttemptedQueries: official.attemptedQueries,
     officialPagesFetched: official.pagesFetched,
     officialTruncated: official.truncated,
     oldestJudgment: official.oldestJudgment,
@@ -169,6 +186,17 @@ export async function researchJurisprudence(
       cabinetCandidatesRead: queryReports.reduce((sum, item) => sum + item.cabinetCandidatesRead, 0),
       selectedResults: selected.length,
       officialSearchWasExhaustive: queryReports.every((item) => !item.officialTruncated),
+      selectedSources: selected.map((item) => ({
+        id: item.id,
+        title: item.title,
+        link: item.link,
+        source: item.source ?? 'vertex_gabinete',
+        processo: item.processo ?? null,
+        acordao: item.acordao ?? null,
+        relator: item.relator ?? null,
+        julgamento: item.julgamento ?? null,
+        researchQueries: item.research_queries ?? [],
+      })),
     },
   };
 }
@@ -179,7 +207,7 @@ export function formatJurisprudenceResearch(report: JurisprudenceResearchReport)
     : 'As consultas percorreram o índice oficial, mas o volume de correspondências exigiu amostragem paginada; não use a expressão “entendimento consolidado” sem apoio consistente nos julgados selecionados.';
   const queries = report.queries.map((item) => {
     const total = item.officialTotalMatches === null ? 'total não informado' : `${item.officialTotalMatches} correspondência(s)`;
-    return `- ${item.label}: ${total}; ${item.officialCandidatesRead} resultado(s) oficial(is) lido(s); páginas ${item.officialPagesFetched.join(', ')}; período consultado ${item.oldestJudgment ?? 'n/d'} a ${item.newestJudgment ?? 'n/d'}.`;
+    return `- ${item.label}: ${total}; consulta efetiva "${item.officialEffectiveQuery}"; ${item.officialCandidatesRead} resultado(s) oficial(is) lido(s); páginas ${item.officialPagesFetched.join(', ')}; período consultado ${item.oldestJudgment ?? 'n/d'} a ${item.newestJudgment ?? 'n/d'}.`;
   }).join('\n');
   return `Pesquisa obrigatória realizada em ${report.searchedAt}.
 Base oficial do TCE-PE consultada: sim.
@@ -206,6 +234,8 @@ export function hasCompletedJurisprudenceResearch(value: unknown) {
 function emptyOfficialReport(query: string): OfficialSearchReport {
   return {
     query,
+    effectiveQuery: query,
+    attemptedQueries: [],
     results: [],
     totalMatches: null,
     pagesFetched: [],

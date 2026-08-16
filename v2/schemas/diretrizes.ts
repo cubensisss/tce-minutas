@@ -92,3 +92,38 @@ export type Diretrizes = z.infer<typeof DiretrizesSchema>;
 export type DiretrizAchado = z.infer<typeof DiretrizAchadoSchema>;
 export type SugestaoIa = z.infer<typeof SugestaoIaSchema>;
 export type PropostaJulgamentoIa = z.infer<typeof PropostaJulgamentoIaSchema>;
+
+/**
+ * Remove textos residuais de consequencias que foram expressamente
+ * desmarcadas. A sugestao original da IA permanece intacta no painel
+ * informativo, mas nunca segue como ordem para a geracao da minuta.
+ */
+export function canonicalizeDiretrizes(diretrizes: Diretrizes): Diretrizes {
+  return {
+    ...diretrizes,
+    achados: diretrizes.achados.map((achado) => ({
+      ...achado,
+      multa: achado.multa.aplicar
+        ? { ...achado.multa }
+        : { ...achado.multa, valor: '' },
+      debito: achado.debito.imputar
+        ? { ...achado.debito }
+        : { ...achado.debito, valor: '' },
+      medida: achado.medida.aplicar
+        ? { ...achado.medida }
+        : { ...achado.medida, texto: '' },
+    })),
+  };
+}
+
+/** Contexto vinculante da minuta: somente escolhas humanas confirmadas. */
+export function diretrizesForGeneration(diretrizes: Diretrizes): Diretrizes {
+  const canonical = canonicalizeDiretrizes(diretrizes);
+  return {
+    ...canonical,
+    achados: canonical.achados.map((achado) => ({
+      ...achado,
+      sugestao_ia: null,
+    })),
+  };
+}

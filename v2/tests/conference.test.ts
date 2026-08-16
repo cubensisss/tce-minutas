@@ -93,6 +93,21 @@ describe('conferência verificável', () => {
     expect(report.checks.find((check) => check.id === 'resultado_1.1')?.ok).toBe(false);
   });
 
+  it('bloqueia minuta que aplica multa depois de ela ser desmarcada', () => {
+    const { resumo, diretrizes, minuta } = state();
+    minuta.decisao_voto += ' Aplicar multa individual de 10% do limite do art. 73.';
+    const hash = generationContextHash(resumo, diretrizes);
+    const report = buildConferenceReport({
+      resumo, diretrizes, minuta,
+      resumoConfirmedAt: '2026-01-01', diretrizesConfirmedAt: '2026-01-01',
+      minutaStatus: 'draft', storedContextHash: hash, currentContextHash: hash,
+      jurisprudenceResearchCompleted: true,
+    });
+
+    expect(report.checks.find((check) => check.id === 'sancoes_desmarcadas_ausentes')?.ok).toBe(false);
+    expect(report.ready).toBe(false);
+  });
+
   it('não invalida o contexto apenas por confirmar uma referência', () => {
     const { resumo, diretrizes } = state();
     const before = generationContextHash(resumo, diretrizes);

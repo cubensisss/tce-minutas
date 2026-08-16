@@ -17,7 +17,24 @@ type JurisprudenceMeta = {
   cabinetCandidatesRead: number;
   selectedResults: number;
   officialSearchWasExhaustive: boolean;
-  queries: unknown[];
+  queries: Array<{
+    label?: string;
+    officialEffectiveQuery?: string;
+    officialCandidatesRead?: number;
+  }>;
+  selectedSources: JurisprudenceSource[];
+};
+
+type JurisprudenceSource = {
+  id: string;
+  title: string | null;
+  link: string | null;
+  source: 'tcepe_oficial' | 'vertex_gabinete';
+  processo: string | null;
+  acordao: string | null;
+  relator: string | null;
+  julgamento: string | null;
+  researchQueries: string[];
 };
 
 export default function MinutaPage({ params }: Props) {
@@ -40,10 +57,11 @@ export default function MinutaPage({ params }: Props) {
         const processo = asRecord(json.processo);
         const minutaMeta = asRecord(processo?.minuta_meta);
         const existing = MinutaSchema.safeParse(processo?.minuta);
+        const minutaIsStale = processo?.minuta_status === 'stale';
         if (!cancelled) {
           setJurisprudenceMeta(parseJurisprudenceMeta(minutaMeta?.jurisprudence));
         }
-        if (existing.success) {
+        if (existing.success && !minutaIsStale) {
           if (!cancelled) {
             setMinuta(existing.data);
             setLoading(false);
@@ -209,9 +227,48 @@ export default function MinutaPage({ params }: Props) {
             {new Date(jurisprudenceMeta.searchedAt).toLocaleString('pt-BR')} por meio de{' '}
             {jurisprudenceMeta.queries.length} consulta(s). Foram lidos{' '}
             {jurisprudenceMeta.officialCandidatesRead} resultado(s) oficiais e{' '}
-            {jurisprudenceMeta.cabinetCandidatesRead} do acervo do gabinete;{' '}
+            {jurisprudenceMeta.cabinetCandidatesRead} do acervo interno indexado;{' '}
             {jurisprudenceMeta.selectedResults} foram selecionados para fundamentar a redação.
           </p>
+          {jurisprudenceMeta.officialCandidatesRead === 0 && (
+            <div className="notice-warning mt-3 text-sm">
+              A consulta oficial não encontrou correspondências para os termos usados. Isso não significa
+              que inexista jurisprudência no TCE-PE; apenas que aquelas consultas não retornaram julgados.
+              Ao regenerar, o sistema tentará automaticamente expressões temáticas mais amplas.
+            </div>
+          )}
+          <p className="text-xs mt-3 text-on-surface-variant">
+            “Acervo interno indexado” é o conjunto de decisões e documentos previamente carregados no
+            mecanismo de pesquisa do gabinete. Não são os autos deste processo concreto.
+          </p>
+          {jurisprudenceMeta.selectedSources.length > 0 && (
+            <details className="mt-4 rounded-md border border-outline-variant p-3">
+              <summary className="cursor-pointer text-sm font-medium">
+                Ver os {jurisprudenceMeta.selectedSources.length} resultados selecionados
+              </summary>
+              <div className="mt-3 space-y-2">
+                {jurisprudenceMeta.selectedSources.map((source) => (
+                  <article key={`${source.source}:${source.id}`} className="source-card text-sm">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`status-chip ${source.source === 'tcepe_oficial' ? 'status-success' : 'status-warning'}`}>
+                        {source.source === 'tcepe_oficial' ? 'TCE-PE oficial' : 'Acervo interno indexado'}
+                      </span>
+                      <strong>{source.title || source.acordao || source.processo || 'Documento sem título'}</strong>
+                    </div>
+                    <p className="text-xs mt-1 text-on-surface-variant">
+                      {[source.acordao, source.processo, source.relator, source.julgamento]
+                        .filter(Boolean).join(' • ') || 'Sem metadados adicionais no índice.'}
+                    </p>
+                    {source.link && (
+                      <a href={source.link} target="_blank" rel="noreferrer" className="text-xs text-primary underline mt-1 inline-block">
+                        Abrir documento
+                      </a>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </details>
+          )}
           {!jurisprudenceMeta.officialSearchWasExhaustive && (
             <p className="text-xs mt-2 text-on-surface-variant">
               Como algumas consultas tiveram muitas correspondências, foram usadas páginas distribuídas no acervo. A minuta não deve tratar a jurisprudência como consolidada sem múltiplos julgados convergentes.
@@ -302,7 +359,20 @@ function parseJurisprudenceMeta(value: unknown): JurisprudenceMeta | null {
     || typeof item.officialSearchWasExhaustive !== 'boolean'
     || !Array.isArray(item.queries)
   ) return null;
-  return item as JurisprudenceMeta;
+  const selectedSources = Array.isArray(item.selectedSources)
+    ? item.selectedSources.filter(isJurisprudenceSource)
+    : [];
+  return { ...item, selectedSources } as JurisprudenceMeta;
+}
+
+function isJurisprudenceSource(value: unknown): value is JurisprudenceSource {
+  if (!value || typeof value !== 'object') return false;
+  const item = value as Partial<JurisprudenceSource>;
+  return typeof item.id === 'string'
+    && (item.source === 'tcepe_oficial' || item.source === 'vertex_gabinete')
+    && (item.title === null || typeof item.title === 'string')
+    && (item.link === null || typeof item.link === 'string')
+    && Array.isArray(item.researchQueries);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

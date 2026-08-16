@@ -269,7 +269,12 @@ export default function DiretrizesPage({ params }: Props) {
                         checked={d.multa.aplicar}
                         onChange={(e) =>
                           updateAchado(a.numero, {
-                            multa: { ...d.multa, aplicar: e.target.checked, confirmado: false },
+                            multa: {
+                              ...d.multa,
+                              aplicar: e.target.checked,
+                              valor: e.target.checked ? d.multa.valor : '',
+                              confirmado: false,
+                            },
                           })
                         }
                         className="rounded text-primary focus:ring-primary h-4 w-4"
@@ -286,8 +291,10 @@ export default function DiretrizesPage({ params }: Props) {
                            multa: { ...d.multa, valor: e.target.value, confirmado: false },
                         })
                       }
-                      disabled={!d.multa.aplicar}
                     />
+                    <p className="text-[11px] text-on-surface-variant">
+                      O texto somente será aplicado se a caixa acima estiver marcada.
+                    </p>
                   </div>
 
                   {/* Débito */}
@@ -298,7 +305,12 @@ export default function DiretrizesPage({ params }: Props) {
                         checked={d.debito.imputar}
                         onChange={(e) =>
                           updateAchado(a.numero, {
-                            debito: { ...d.debito, imputar: e.target.checked, confirmado: false },
+                            debito: {
+                              ...d.debito,
+                              imputar: e.target.checked,
+                              valor: e.target.checked ? d.debito.valor : '',
+                              confirmado: false,
+                            },
                           })
                         }
                         className="rounded text-primary focus:ring-primary h-4 w-4"
@@ -314,8 +326,10 @@ export default function DiretrizesPage({ params }: Props) {
                            debito: { ...d.debito, valor: e.target.value, confirmado: false },
                         })
                       }
-                      disabled={!d.debito.imputar}
                     />
+                    <p className="text-[11px] text-on-surface-variant">
+                      O texto somente será aplicado se a caixa acima estiver marcada.
+                    </p>
                   </div>
 
                   {/* Medida */}
@@ -326,7 +340,12 @@ export default function DiretrizesPage({ params }: Props) {
                         checked={d.medida.aplicar}
                         onChange={(e) =>
                           updateAchado(a.numero, {
-                            medida: { ...d.medida, aplicar: e.target.checked, confirmado: false },
+                            medida: {
+                              ...d.medida,
+                              aplicar: e.target.checked,
+                              texto: e.target.checked ? d.medida.texto : '',
+                              confirmado: false,
+                            },
                           })
                         }
                         className="rounded text-primary focus:ring-primary h-4 w-4"
@@ -344,8 +363,10 @@ export default function DiretrizesPage({ params }: Props) {
                            medida: { ...d.medida, texto: e.target.value, confirmado: false },
                         })
                       }
-                      disabled={!d.medida.aplicar}
                     />
+                    <p className="text-[11px] text-on-surface-variant">
+                      O texto somente será aplicado se a caixa acima estiver marcada.
+                    </p>
                   </div>
                 </div>
               </div>

@@ -27,6 +27,8 @@ export type OfficialSearchOptions = {
 
 export type OfficialSearchReport = {
   query: string;
+  effectiveQuery: string;
+  attemptedQueries: string[];
   results: SimilarResult[];
   totalMatches: number | null;
   pagesFetched: number[];
@@ -58,14 +60,24 @@ export async function searchTceJurisprudenciaDetailed(
   const pageSize = Math.min(Math.max(options.pageSize ?? 20, 1), 50);
   const maxPages = Math.min(Math.max(options.maxPages ?? 2, 1), 10);
   const timeoutMs = Math.min(Math.max(options.timeoutMs ?? 45_000, 5_000), 60_000);
-  const first = await fetchPage(query, 0, pageSize, timeoutMs);
+  const variants = officialQueryVariants(query);
+  const attemptedQueries: string[] = [];
+  let effectiveQuery = variants[0]!;
+  let first = await fetchPage(effectiveQuery, 0, pageSize, timeoutMs);
+  attemptedQueries.push(effectiveQuery);
+  for (const fallback of variants.slice(1)) {
+    if (first.rows.length > 0) break;
+    effectiveQuery = fallback;
+    first = await fetchPage(effectiveQuery, 0, pageSize, timeoutMs);
+    attemptedQueries.push(effectiveQuery);
+  }
   const totalMatches = parseTotal(first.totalHeader);
   const totalPages = totalMatches === null
     ? (first.rows.length === pageSize ? maxPages : 1)
     : Math.max(1, Math.ceil(totalMatches / pageSize));
   const pageIndexes = distributedPageIndexes(totalPages, maxPages);
   const remainingPages = await Promise.all(
-    pageIndexes.slice(1).map((page) => fetchPage(query, page, pageSize, timeoutMs)),
+    pageIndexes.slice(1).map((page) => fetchPage(effectiveQuery, page, pageSize, timeoutMs)),
   );
   const pages = [first, ...remainingPages];
   const mapped = pages.flatMap((page) => page.rows.map(mapRow));
@@ -77,6 +89,8 @@ export async function searchTceJurisprudenciaDetailed(
 
   log.info({
     query,
+    effectiveQuery,
+    attemptedQueries,
     returned: results.length,
     totalMatches,
     pages: pageIndexes,
@@ -84,6 +98,8 @@ export async function searchTceJurisprudenciaDetailed(
 
   return {
     query,
+    effectiveQuery,
+    attemptedQueries,
     results,
     totalMatches,
     pagesFetched: pageIndexes,
@@ -176,11 +192,31 @@ function deduplicate(rows: SimilarResult[]) {
 
 function normalizeQuery(query: string) {
   return query
-    .replace(/\s*\|\s*/g, ' *OU ')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 500);
 }
+
+function officialQueryVariants(query: string): string[] {
+  const title = query.split(/\s*\|\s*/)[0]?.trim() || query.trim();
+  const words = normalizeQuery(title)
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length >= 4 && !OFFICIAL_STOP_WORDS.has(word));
+  const longest = [...words].sort((left, right) => right.length - left.length)[0];
+  return [...new Set([
+    normalizeQuery(title),
+    words.slice(-2).join(' '),
+    words.slice(0, 2).join(' '),
+    longest ?? '',
+  ].filter(Boolean))];
+}
+
+const OFFICIAL_STOP_WORDS = new Set([
+  'para', 'pela', 'pelo', 'como', 'com', 'sem', 'uma', 'entre', 'sobre',
+  'quantidade', 'quantidades', 'processo', 'achado',
+]);
 
 function cleanHtml(value: string) {
   return value

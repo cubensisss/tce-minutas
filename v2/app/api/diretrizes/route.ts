@@ -8,7 +8,7 @@
 import { z } from 'zod';
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
-import { DiretrizesSchema } from '@/schemas/diretrizes';
+import { canonicalizeDiretrizes, DiretrizesSchema } from '@/schemas/diretrizes';
 import { loggerFor } from '@/lib/logger';
 import { directiveBlockers } from '@/lib/conference/checks';
 
@@ -31,7 +31,8 @@ export async function PUT(request: NextRequest) {
   }
 
   const supabase = await createServerClient();
-  const blockers = directiveBlockers(parsed.data.diretrizes);
+  const diretrizes = canonicalizeDiretrizes(parsed.data.diretrizes);
+  const blockers = directiveBlockers(diretrizes);
   if (blockers.length > 0) {
     return NextResponse.json(
       { error: 'diretrizes_incompletas', details: blockers },
@@ -41,7 +42,7 @@ export async function PUT(request: NextRequest) {
   const { error } = await supabase
     .from('processos')
     .update({
-      diretrizes: parsed.data.diretrizes,
+      diretrizes,
       status: 'diretrizes',
       diretrizes_confirmadas_at: new Date().toISOString(),
       minuta_status: 'stale',
