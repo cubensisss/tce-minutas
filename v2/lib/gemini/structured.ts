@@ -15,8 +15,10 @@ function normalizeSchema(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(normalizeSchema);
   if (!value || typeof value !== 'object') return value;
 
+  const source = value as Record<string, unknown>;
+  const normalizedType = typeof source.type === 'string' ? source.type.toUpperCase() : null;
   const out: Record<string, unknown> = {};
-  for (const [key, child] of Object.entries(value)) {
+  for (const [key, child] of Object.entries(source)) {
     // `default` e os demais campos abaixo podem ser produzidos pelo conversor,
     // mas nao sao aceitos em schemas de RESPOSTA da Gemini API.
     if (
@@ -25,6 +27,40 @@ function normalizeSchema(value: unknown): unknown {
       key === 'definitions' ||
       key === 'default'
     ) continue;
+    // `z.number().int().positive()` vira `exclusiveMinimum: 0` no OpenAPI,
+    // mas o campo nao existe no Schema protobuf usado por responseSchema.
+    // Para inteiros, preservamos exatamente a restricao convertendo > N em
+    // >= N + 1. Para numeros continuos, a API nao possui equivalente seguro.
+    if (key === 'exclusiveMinimum') {
+      if (normalizedType === 'INTEGER' && typeof child === 'number') {
+        out.minimum = Math.floor(child) + 1;
+      }
+      continue;
+    }
+    if (key === 'exclusiveMaximum') {
+      if (normalizedType === 'INTEGER' && typeof child === 'number') {
+        out.maximum = Math.ceil(child) - 1;
+      }
+      continue;
+    }
+    if (
+      key === 'minimum' &&
+      normalizedType === 'INTEGER' &&
+      source.exclusiveMinimum === true &&
+      typeof child === 'number'
+    ) {
+      out.minimum = Math.floor(child) + 1;
+      continue;
+    }
+    if (
+      key === 'maximum' &&
+      normalizedType === 'INTEGER' &&
+      source.exclusiveMaximum === true &&
+      typeof child === 'number'
+    ) {
+      out.maximum = Math.ceil(child) - 1;
+      continue;
+    }
     if (key === 'type' && typeof child === 'string') {
       out[key] = child.toUpperCase();
       continue;

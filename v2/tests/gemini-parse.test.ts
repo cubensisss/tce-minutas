@@ -58,5 +58,15 @@ describe('toGeminiResponseSchema', () => {
     const serialized = JSON.stringify(toGeminiResponseSchema(schema));
     expect(serialized).not.toContain('"default"');
     expect(serialized).not.toContain('"additionalProperties"');
+    expect(serialized).not.toContain('"exclusiveMinimum"');
+    expect(serialized).not.toContain('"exclusiveMaximum"');
+  });
+
+  it('converte limite inteiro exclusivo para o formato aceito pelo Gemini', () => {
+    const result = toGeminiResponseSchema(z.object({ pagina: z.number().int().positive() })) as unknown as {
+      properties: { pagina: Record<string, unknown> };
+    };
+    expect(result.properties.pagina).toMatchObject({ type: 'INTEGER', minimum: 1 });
+    expect(result.properties.pagina).not.toHaveProperty('exclusiveMinimum');
   });
 });
