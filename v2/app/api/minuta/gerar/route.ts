@@ -17,7 +17,11 @@ import { extractFromBuffer } from '@/lib/pdf/extract';
 import { generateJson } from '@/lib/gemini/client';
 import { MinutaSchema } from '@/schemas/minuta';
 import { ResumoSchema } from '@/schemas/resumo';
-import { DiretrizesSchema, diretrizesForGeneration } from '@/schemas/diretrizes';
+import {
+  canonicalizeDiretrizes,
+  DiretrizesSchema,
+  diretrizesForGeneration,
+} from '@/schemas/diretrizes';
 import { buildMinutaSystemPrompt, buildMinutaUserPrompt } from '@/prompts/minuta';
 import { loadPersonaConfig } from '@/lib/config/persona';
 import { loggerFor } from '@/lib/logger';
@@ -108,11 +112,21 @@ async function generateMinuta(request: NextRequest) {
   if (!processo.resumo_confirmado_at) {
     return NextResponse.json({ error: 'resumo_nao_confirmado' }, { status: 409 });
   }
-  const generationDiretrizes = diretrizesForGeneration(diretrizesParse.data);
-  const pendingDirectives = directiveBlockers(generationDiretrizes);
+  // A validacao precisa enxergar a proposta e suas fontes. Somente a copia
+  // enviada ao Gemini remove sugestao_ia, para ela nao se sobrepor as escolhas
+  // humanas confirmadas.
+  const confirmedDiretrizes = canonicalizeDiretrizes(diretrizesParse.data);
+  const pendingDirectives = directiveBlockers(confirmedDiretrizes);
+  const generationDiretrizes = diretrizesForGeneration(confirmedDiretrizes);
   if (!processo.diretrizes_confirmadas_at || pendingDirectives.length > 0) {
+    const message = !processo.diretrizes_confirmadas_at
+      ? 'A confirmação das diretrizes ainda não foi salva.'
+      : `As diretrizes possuem pendências: ${pendingDirectives.join(' • ')}`;
+    await updateJobProgress(supabase, job_id, {
+      phase: 'erro', message, progress: 8, timings,
+    }, 'error');
     return NextResponse.json(
-      { error: 'diretrizes_nao_confirmadas', details: pendingDirectives },
+      { error: 'diretrizes_nao_confirmadas', message, details: pendingDirectives },
       { status: 409 },
     );
   }

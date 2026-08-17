@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { buildConferenceReport, directiveBlockers, generationContextHash } from '@/lib/conference/checks';
 import { ResumoSchema } from '@/schemas/resumo';
-import { DiretrizesSchema } from '@/schemas/diretrizes';
+import {
+  canonicalizeDiretrizes,
+  DiretrizesSchema,
+  diretrizesForGeneration,
+} from '@/schemas/diretrizes';
 import { MinutaSchema } from '@/schemas/minuta';
 import { contentHash } from '@/lib/evidence/verify';
 import { isApprovedForDownload } from '@/lib/minuta/approval';
@@ -53,6 +57,14 @@ function state() {
 }
 
 describe('conferência verificável', () => {
+  it('valida a confirmacao antes de remover a proposta do contexto da IA', () => {
+    const { diretrizes } = state();
+    const confirmed = canonicalizeDiretrizes(diretrizes);
+
+    expect(directiveBlockers(confirmed)).toEqual([]);
+    expect(diretrizesForGeneration(confirmed).achados[0]!.sugestao_ia).toBeNull();
+  });
+
   it('bloqueia qualquer decisão de sanção não confirmada, inclusive não aplicar', () => {
     const { diretrizes } = state();
     diretrizes.achados[0]!.multa.confirmado = false;
