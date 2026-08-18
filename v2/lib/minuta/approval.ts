@@ -8,8 +8,9 @@ export function isApprovedForDownload(input: {
   storedContextHash: string | null;
   currentContextHash: string | null;
 }): boolean {
+  // A aprovação humana da versão exata da minuta é suficiente para liberar o
+  // arquivo. Divergências de contexto continuam visíveis na conferência como
+  // avisos, mas não bloqueiam o fluxo.
   return input.status === 'approved' &&
-    input.approvedHash === contentHash(input.minuta) &&
-    !!input.currentContextHash &&
-    input.storedContextHash === input.currentContextHash;
+    input.approvedHash === contentHash(input.minuta);
 }

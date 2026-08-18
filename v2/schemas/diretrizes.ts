@@ -1,9 +1,9 @@
 /**
- * Diretrizes propostas pela IA e confirmadas pela Conselheira ANTES da minuta.
+ * Diretrizes propostas pela IA e revisadas pela Conselheira ANTES da minuta.
  *
  * Para CADA achado, a IA propõe resultado, multa, débito e medida com a
- * fundamentação correspondente. A proposta só se torna diretriz definitiva
- * depois da concordância humana expressa.
+ * fundamentação correspondente. Os campos revisados tornam-se definitivos
+ * quando a Conselheira salva as diretrizes; não há confirmação adicional.
  */
 import { z } from 'zod';
 
@@ -11,6 +11,7 @@ export const ResultadoAchadoEnum = z.enum([
   'irregular',
   'regular_com_ressalvas',
   'regular',
+  'expedicao_medidas_saneadoras',
 ]);
 
 export const MultaSchema = z.object({
@@ -32,8 +33,8 @@ export const MedidaSchema = z.object({
 });
 
 /**
- * Proposta de julgamento gerada pela IA. Não é vinculante até a confirmação
- * humana e permanece visível com a fundamentação na interface.
+ * Proposta de julgamento gerada pela IA. Não é vinculante até que os campos
+ * sejam revisados e salvos, e permanece visível com a fundamentação na interface.
  *
  * Cada sugestão DEVE vir acompanhada da sua fonte (legislação ou precedente)
  * — sem fonte, a sugestão não é confiável.
@@ -72,7 +73,7 @@ export const PropostaJulgamentoIaSchema = SugestaoIaSchema.extend({
 
 export const DiretrizAchadoSchema = z.object({
   achado_numero: z.string(),
-  /** Confirmação humana da proposta completa de julgamento deste achado. */
+  /** Campo legado: salvar as diretrizes já representa a revisão humana. */
   confirmado: z.boolean().default(false),
   /** Resultado pendente enquanto null; a geração fica bloqueada. */
   resultado: ResultadoAchadoEnum.nullable().default(null),
@@ -94,29 +95,30 @@ export type SugestaoIa = z.infer<typeof SugestaoIaSchema>;
 export type PropostaJulgamentoIa = z.infer<typeof PropostaJulgamentoIaSchema>;
 
 /**
- * Remove textos residuais de consequencias que foram expressamente
- * desmarcadas. A sugestao original da IA permanece intacta no painel
- * informativo, mas nunca segue como ordem para a geracao da minuta.
+ * Normaliza os campos salvos. Remove textos residuais de consequências
+ * desmarcadas e marca os campos legados de confirmação para manter
+ * compatibilidade com processos existentes.
  */
 export function canonicalizeDiretrizes(diretrizes: Diretrizes): Diretrizes {
   return {
     ...diretrizes,
     achados: diretrizes.achados.map((achado) => ({
       ...achado,
+      confirmado: true,
       multa: achado.multa.aplicar
-        ? { ...achado.multa }
-        : { ...achado.multa, valor: '' },
+        ? { ...achado.multa, confirmado: true }
+        : { ...achado.multa, confirmado: true, valor: '' },
       debito: achado.debito.imputar
-        ? { ...achado.debito }
-        : { ...achado.debito, valor: '' },
+        ? { ...achado.debito, confirmado: true }
+        : { ...achado.debito, confirmado: true, valor: '' },
       medida: achado.medida.aplicar
-        ? { ...achado.medida }
-        : { ...achado.medida, texto: '' },
+        ? { ...achado.medida, confirmado: true }
+        : { ...achado.medida, confirmado: true, texto: '' },
     })),
   };
 }
 
-/** Contexto vinculante da minuta: somente escolhas humanas confirmadas. */
+/** Contexto vinculante da minuta: somente os campos revisados e salvos. */
 export function diretrizesForGeneration(diretrizes: Diretrizes): Diretrizes {
   const canonical = canonicalizeDiretrizes(diretrizes);
   return {

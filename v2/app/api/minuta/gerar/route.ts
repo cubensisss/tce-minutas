@@ -112,21 +112,21 @@ async function generateMinuta(request: NextRequest) {
   if (!processo.resumo_confirmado_at) {
     return NextResponse.json({ error: 'resumo_nao_confirmado' }, { status: 409 });
   }
-  // A validacao precisa enxergar a proposta e suas fontes. Somente a copia
-  // enviada ao Gemini remove sugestao_ia, para ela nao se sobrepor as escolhas
-  // humanas confirmadas.
-  const confirmedDiretrizes = canonicalizeDiretrizes(diretrizesParse.data);
-  const pendingDirectives = directiveBlockers(confirmedDiretrizes);
-  const generationDiretrizes = diretrizesForGeneration(confirmedDiretrizes);
+  // A validação precisa enxergar a proposta e suas fontes. Somente a cópia
+  // enviada ao Gemini remove sugestao_ia, para ela não se sobrepor aos campos
+  // revisados e salvos pela Conselheira.
+  const savedDiretrizes = canonicalizeDiretrizes(diretrizesParse.data);
+  const pendingDirectives = directiveBlockers(savedDiretrizes);
+  const generationDiretrizes = diretrizesForGeneration(savedDiretrizes);
   if (!processo.diretrizes_confirmadas_at || pendingDirectives.length > 0) {
     const message = !processo.diretrizes_confirmadas_at
-      ? 'A confirmação das diretrizes ainda não foi salva.'
+      ? 'As diretrizes ainda não foram salvas.'
       : `As diretrizes possuem pendências: ${pendingDirectives.join(' • ')}`;
     await updateJobProgress(supabase, job_id, {
       phase: 'erro', message, progress: 8, timings,
     }, 'error');
     return NextResponse.json(
-      { error: 'diretrizes_nao_confirmadas', message, details: pendingDirectives },
+      { error: 'diretrizes_nao_salvas', message, details: pendingDirectives },
       { status: 409 },
     );
   }
@@ -247,7 +247,7 @@ async function generateMinuta(request: NextRequest) {
   );
   const sanctionConflicts = inactiveSanctionConflicts(generationDiretrizes, minuta);
   if (sanctionConflicts.length > 0) {
-    log.error({ processo_id, sanctionConflicts }, 'minuta divergiu das sancoes confirmadas');
+    log.error({ processo_id, sanctionConflicts }, 'minuta divergiu das sancoes salvas');
     await updateJobProgress(supabase, job_id, {
       phase: 'erro',
       message: 'A redação da IA contrariou uma sanção desmarcada e foi descartada com segurança.',

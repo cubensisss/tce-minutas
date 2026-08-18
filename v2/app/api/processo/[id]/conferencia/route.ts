@@ -121,9 +121,6 @@ export async function POST(request: NextRequest, { params }: Ctx) {
   }
 
   const report = reportFor(loaded.state, loaded.resumo, loaded.diretrizes, loaded.minuta);
-  if (!report.ready) {
-    return NextResponse.json({ error: 'conferencia_incompleta', report }, { status: 409 });
-  }
   const { error } = await loaded.supabase.from('processos').update({
     status: 'conferencia',
     minuta_status: 'approved',

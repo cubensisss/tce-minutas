@@ -197,9 +197,17 @@ ${buildLimiteLegalBlock(persona.limiteLegalArt73)}
 # REGRAS DESTA PROPOSTA DE JULGAMENTO (CRÍTICO)
 - Analise o achado, a defesa, a legislação e a jurisprudência recuperada.
 - Proponha OBRIGATORIAMENTE um resultado: irregular,
-  regular_com_ressalvas ou regular.
-- A proposta não é decisão final. Ela só produzirá efeito depois da
-  concordância humana expressa na interface.
+  regular_com_ressalvas, regular ou expedicao_medidas_saneadoras.
+- Use "expedicao_medidas_saneadoras" quando a providência adequada for apenas
+  expedir determinações, recomendações e/ou medidas saneadoras, sem aprovar ou
+  reprovar contas — especialmente quando não houver responsável individualizado
+  pela auditoria ou quando a fiscalização for transversal, em lote ou destinada
+  ao monitoramento de setores em vários municípios.
+- Ao escolher "expedicao_medidas_saneadoras", preencha obrigatoriamente
+  "medida" com providência concreta e use null em "multa" e "debito". Não
+  invente responsável nem conclua pela regularidade ou irregularidade das contas.
+- A proposta não é decisão final. Ela só produzirá efeito depois que a
+  Conselheira revisar os campos e salvar as diretrizes na interface.
 - Decida também sobre multa, débito e medida. Use null quando entender que
   determinada sanção ou medida não deve ser aplicada.
 - Use artigos da Lei 12.600/2004, LINDB, Lei 8.666/93, Lei 14.133/2021
@@ -251,7 +259,7 @@ Para legislação, use o link oficial correspondente no campo "link".
 
 # FORMATO (JSON estrito)
 {
-  "resultado": "irregular|regular_com_ressalvas|regular",
+  "resultado": "irregular|regular_com_ressalvas|regular|expedicao_medidas_saneadoras",
   "multa": "string|null — proposta de multa (ou null)",
   "debito": "string|null — proposta de débito (ou null)",
   "medida": "string|null — recomendação ou determinação (ou null)",

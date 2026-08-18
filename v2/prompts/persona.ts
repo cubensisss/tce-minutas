@@ -168,8 +168,8 @@ export const DEFAULT_PROIBICOES = `
 - Na análise prévia, proponha o mérito e as consequências de cada achado,
   sempre com fundamentação legal e jurisprudencial verificável.
 - Na redação da minuta, espelhe literalmente o resultado, a multa, o débito
-  e a medida já confirmados nas diretrizes. Nunca os altere por iniciativa
-  própria, ainda que discorde da proposta confirmada.
+  e a medida preenchidos e salvos nas diretrizes. Nunca os altere por
+  iniciativa própria, ainda que discorde das escolhas registradas.
 - Se faltar informação essencial, escrever "[VERIFICAR: ...]" ao invés
   de inventar, e listar em sugestao_pendente.
 - NUNCA atribuir má-fé, dolo ou improbidade quando não houver evidência

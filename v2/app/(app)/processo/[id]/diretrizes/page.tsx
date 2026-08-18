@@ -16,9 +16,14 @@ import {
 type Props = { params: Promise<{ id: string }> };
 
 const RESULTADOS = [
-  { v: 'irregular', label: 'Irregular' },
-  { v: 'regular_com_ressalvas', label: 'Regular com ressalvas' },
-  { v: 'regular', label: 'Regular' },
+  { v: 'irregular', label: 'Irregular', description: null },
+  { v: 'regular_com_ressalvas', label: 'Regular com ressalvas', description: null },
+  { v: 'regular', label: 'Regular', description: null },
+  {
+    v: 'expedicao_medidas_saneadoras',
+    label: 'Expedição de determinações, recomendações e/ou medidas saneadoras',
+    description: 'Sem aprovar ou reprovar as contas; exige ao menos uma medida preenchida.',
+  },
 ] as const;
 
 function aplicarProposta(
@@ -27,20 +32,20 @@ function aplicarProposta(
 ): DiretrizAchado {
   return {
     ...achado,
-    confirmado: false,
+    confirmado: true,
     resultado: proposta.resultado,
     multa: {
-      confirmado: false,
+      confirmado: true,
       aplicar: proposta.multa !== null,
       valor: proposta.multa ?? '',
     },
     debito: {
-      confirmado: false,
+      confirmado: true,
       imputar: proposta.debito !== null,
       valor: proposta.debito ?? '',
     },
     medida: {
-      confirmado: false,
+      confirmado: true,
       aplicar: proposta.medida !== null,
       texto: proposta.medida ?? '',
     },
@@ -111,11 +116,11 @@ export default function DiretrizesPage({ params }: Props) {
         : {
             achados: r.data.achados.map((a) => ({
               achado_numero: a.numero,
-              confirmado: false,
+              confirmado: true,
               resultado: null,
-              multa: { confirmado: false, aplicar: false, valor: '' },
-              debito: { confirmado: false, imputar: false, valor: '' },
-              medida: { confirmado: false, aplicar: false, texto: '' },
+              multa: { confirmado: true, aplicar: false, valor: '' },
+              debito: { confirmado: true, imputar: false, valor: '' },
+              medida: { confirmado: true, aplicar: false, texto: '' },
               observacoes: null,
               sugestao_ia: null,
             })),
@@ -125,7 +130,7 @@ export default function DiretrizesPage({ params }: Props) {
       for (const achado of initial.achados) {
         const propostaAusente = !achado.sugestao_ia?.resultado
           || achado.sugestao_ia.fontes.length === 0;
-        if (!achado.confirmado && propostaAusente) {
+        if (propostaAusente) {
           await pedirSugestaoIa(achado.achado_numero);
         }
       }
@@ -137,28 +142,8 @@ export default function DiretrizesPage({ params }: Props) {
       ...d,
       achados: d.achados.map((a) => {
         if (a.achado_numero !== numero) return a;
-        return { ...a, ...patch, confirmado: patch.confirmado ?? false };
+        return { ...a, ...patch };
       }),
-    });
-  }
-
-  /** Uma única concordância humana confirma o julgamento completo do achado. */
-  function confirmarJulgamento(numero: string, confirmado: boolean) {
-    setDiretrizes((d) => {
-      if (!d) return d;
-      return {
-        ...d,
-        achados: d.achados.map((a) => {
-          if (a.achado_numero !== numero) return a;
-          return {
-            ...a,
-            confirmado,
-            multa: { ...a.multa, confirmado },
-            debito: { ...a.debito, confirmado },
-            medida: { ...a.medida, confirmado },
-          };
-        }),
-      };
     });
   }
 
@@ -200,7 +185,8 @@ export default function DiretrizesPage({ params }: Props) {
         <h1 className="text-3xl font-display font-semibold text-primary">Diretrizes do julgamento</h1>
         <p className="text-on-surface-variant mt-1">
           A IA prepara o resultado, as consequências e a fundamentação de cada
-          achado. Revise, ajuste se necessário e confirme sua concordância.
+          achado. Revise e ajuste os campos: ao salvar, eles serão as diretrizes
+          consideradas na minuta, sem confirmação adicional.
         </p>
       </header>
 
@@ -224,7 +210,7 @@ export default function DiretrizesPage({ params }: Props) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* COLUNA 1 — RESULTADO */}
                 <div className="space-y-2">
-                  <label className="label">Resultado proposto pela IA</label>
+                  <label className="label">Resultado do achado</label>
                   <div className="space-y-2">
                     {d.resultado === null && (
                       <div className="p-3 rounded-xl border border-warning/40 bg-warning-container/30 text-sm">
@@ -251,7 +237,14 @@ export default function DiretrizesPage({ params }: Props) {
                           }
                           className="text-primary focus:ring-primary"
                         />
-                        <span className="text-sm font-medium">{r.label}</span>
+                        <span className="text-sm">
+                          <strong className="font-medium">{r.label}</strong>
+                          {r.description && (
+                            <span className="block mt-0.5 text-xs text-on-surface-variant">
+                              {r.description}
+                            </span>
+                          )}
+                        </span>
                       </label>
                     ))}
                   </div>
@@ -273,7 +266,7 @@ export default function DiretrizesPage({ params }: Props) {
                               ...d.multa,
                               aplicar: e.target.checked,
                               valor: e.target.checked ? d.multa.valor : '',
-                              confirmado: false,
+                              confirmado: true,
                             },
                           })
                         }
@@ -288,7 +281,7 @@ export default function DiretrizesPage({ params }: Props) {
                       value={d.multa.valor}
                       onChange={(e) =>
                         updateAchado(a.numero, {
-                           multa: { ...d.multa, valor: e.target.value, confirmado: false },
+                           multa: { ...d.multa, valor: e.target.value, confirmado: true },
                         })
                       }
                     />
@@ -309,7 +302,7 @@ export default function DiretrizesPage({ params }: Props) {
                               ...d.debito,
                               imputar: e.target.checked,
                               valor: e.target.checked ? d.debito.valor : '',
-                              confirmado: false,
+                              confirmado: true,
                             },
                           })
                         }
@@ -323,7 +316,7 @@ export default function DiretrizesPage({ params }: Props) {
                       value={d.debito.valor}
                       onChange={(e) =>
                         updateAchado(a.numero, {
-                           debito: { ...d.debito, valor: e.target.value, confirmado: false },
+                           debito: { ...d.debito, valor: e.target.value, confirmado: true },
                         })
                       }
                     />
@@ -344,7 +337,7 @@ export default function DiretrizesPage({ params }: Props) {
                               ...d.medida,
                               aplicar: e.target.checked,
                               texto: e.target.checked ? d.medida.texto : '',
-                              confirmado: false,
+                              confirmado: true,
                             },
                           })
                         }
@@ -360,7 +353,7 @@ export default function DiretrizesPage({ params }: Props) {
                       value={d.medida.texto}
                       onChange={(e) =>
                         updateAchado(a.numero, {
-                           medida: { ...d.medida, texto: e.target.value, confirmado: false },
+                           medida: { ...d.medida, texto: e.target.value, confirmado: true },
                         })
                       }
                     />
@@ -506,30 +499,6 @@ export default function DiretrizesPage({ params }: Props) {
                 )}
               </aside>
 
-              <label className={`flex items-start gap-3 rounded-md border p-4 cursor-pointer transition-colors ${
-                d.confirmado
-                  ? 'border-primary bg-primary-container/30'
-                  : 'border-warning/50 bg-warning-container/20'
-              }`}>
-                <input
-                  type="checkbox"
-                  checked={d.confirmado}
-                  disabled={
-                    !d.resultado
-                    || !d.sugestao_ia?.fontes.length
-                    || suggesting.has(a.numero)
-                  }
-                  onChange={(e) => confirmarJulgamento(a.numero, e.target.checked)}
-                  className="mt-0.5 rounded text-primary focus:ring-primary h-4 w-4"
-                />
-                <span className="text-sm">
-                  <strong>Concordo com o julgamento deste achado.</strong>
-                  <span className="block mt-1 text-xs text-on-surface-variant">
-                    Esta confirmação abrange o resultado, a multa, o débito e a medida indicados acima.
-                    Qualquer alteração posterior exigirá nova confirmação.
-                  </span>
-                </span>
-              </label>
             </article>
           );
         })}

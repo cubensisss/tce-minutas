@@ -31,22 +31,24 @@ export function directiveBlockers(diretrizes: Diretrizes): string[] {
   const errors: string[] = [];
   for (const achado of diretrizes.achados) {
     const prefix = `Achado ${achado.achado_numero}`;
-    if (!achado.confirmado) errors.push(`${prefix}: julgamento não confirmado`);
-    if (!achado.resultado) errors.push(`${prefix}: resultado não confirmado`);
+    if (!achado.resultado) errors.push(`${prefix}: resultado não preenchido`);
     if (!achado.sugestao_ia?.fontes.length) errors.push(`${prefix}: fundamentação jurídica sem fonte verificada`);
-    if (!achado.multa.confirmado) errors.push(`${prefix}: decisão sobre multa pendente`);
-    if (!achado.debito.confirmado) errors.push(`${prefix}: decisão sobre débito pendente`);
-    if (!achado.medida.confirmado) errors.push(`${prefix}: decisão sobre medida pendente`);
     if (achado.multa.aplicar && !achado.multa.valor.trim()) errors.push(`${prefix}: valor da multa ausente`);
     if (achado.debito.imputar && !achado.debito.valor.trim()) errors.push(`${prefix}: valor do débito ausente`);
     if (achado.medida.aplicar && !achado.medida.texto.trim()) errors.push(`${prefix}: texto da medida ausente`);
+    if (
+      achado.resultado === 'expedicao_medidas_saneadoras'
+      && (!achado.medida.aplicar || !achado.medida.texto.trim())
+    ) {
+      errors.push(`${prefix}: descreva ao menos uma determinação, recomendação ou medida saneadora`);
+    }
   }
   return errors;
 }
 
 /**
  * Verificacao de seguranca para impedir que a redacao da IA reintroduza uma
- * consequencia expressamente desmarcada nas diretrizes confirmadas.
+ * consequência expressamente desmarcada nas diretrizes salvas.
  */
 export function inactiveSanctionConflicts(diretrizes: Diretrizes, minuta: Minuta): string[] {
   const text = [minuta.ementa, minuta.analise_completa, minuta.decisao_voto].join('\n');
@@ -116,8 +118,10 @@ export function buildConferenceReport(input: {
 
   const directiveErrors = directiveBlockers(input.diretrizes);
   add({
-    id: 'diretrizes_completas', group: 'diretrizes', label: 'Todas as decisões foram confirmadas',
-    detail: directiveErrors.length === 0 ? 'Resultados e medidas estão completos.' : directiveErrors.join('; '),
+    id: 'diretrizes_completas', group: 'diretrizes', label: 'Diretrizes preenchidas e válidas',
+    detail: directiveErrors.length === 0
+      ? 'Os resultados e as medidas salvos serão usados na minuta.'
+      : directiveErrors.join('; '),
     ok: directiveErrors.length === 0 && !!input.diretrizesConfirmedAt,
   });
 
@@ -176,7 +180,11 @@ export function buildConferenceReport(input: {
   for (const achado of input.diretrizes.achados) {
     const required = achado.resultado === 'irregular'
       ? 'IRREGULARIDADE'
-      : achado.resultado === 'regular_com_ressalvas' ? 'REGULARIDADE COM RESSALVAS' : 'REGULARIDADE';
+      : achado.resultado === 'regular_com_ressalvas'
+        ? 'REGULARIDADE COM RESSALVAS'
+        : achado.resultado === 'expedicao_medidas_saneadoras'
+          ? 'EXPEDIÇÃO DE DETERMINAÇÕES, RECOMENDAÇÕES E/OU MEDIDAS SANEADORAS'
+          : 'REGULARIDADE';
     add({
       id: `resultado_${achado.achado_numero}`, group: 'dispositivo',
       label: `Resultado do achado ${achado.achado_numero}`,
@@ -192,10 +200,27 @@ export function buildConferenceReport(input: {
       add({
         id: `${sanction.name}_${achado.achado_numero}`, group: 'dispositivo',
         label: `${sanction.name} do achado ${achado.achado_numero}`,
-        detail: `O valor/texto confirmado deve aparecer literalmente no dispositivo.`,
+        detail: `O valor/texto preenchido deve aparecer literalmente no dispositivo.`,
         ok: normalize(input.minuta.decisao_voto).includes(normalize(sanction.value)),
       });
     }
+  }
+
+  const onlySaneadoraResults = input.diretrizes.achados.every(
+    (achado) => achado.resultado === 'expedicao_medidas_saneadoras',
+  );
+  if (onlySaneadoraResults) {
+    const decidesAccounts = /(?:regularidade|irregularidade|aprova(?:r|ção|das?)?|reprova(?:r|ção|das?)?|rejeita(?:r|das?)?)[^.;\n]{0,100}(?:contas|gestão)/i
+      .test(input.minuta.decisao_voto);
+    add({
+      id: 'sem_julgamento_de_contas',
+      group: 'dispositivo',
+      label: 'Sem aprovação ou reprovação das contas',
+      detail: decidesAccounts
+        ? 'O dispositivo julgou as contas, embora as diretrizes determinem apenas medidas saneadoras.'
+        : 'O dispositivo limita-se às determinações, recomendações e/ou medidas saneadoras.',
+      ok: !decidesAccounts,
+    });
   }
 
   const inactiveConflicts = inactiveSanctionConflicts(input.diretrizes, input.minuta);

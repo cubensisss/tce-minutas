@@ -171,7 +171,8 @@ Apresente o caso, com a indicação dos fatos relevantes
 Apresente as principais justificativas que fundamentam a decisão, extraídas da fundamentação. Cada justificativa autônoma deve ser redigida em um item numerado (2., 3., 4., etc.), de forma concisa e objetiva, contendo apenas uma ideia central por item. Utilize quantos itens forem necessários para contemplar todas as justificativas relevantes.
 
 ### III. DISPOSITIVO E TESE
-Apresente o resultado do julgamento. Exemplo: Regularidade/Regularidade com ressalvas/irregularidade OU Recurso provido/desprovido.
+Apresente o resultado definido nas diretrizes: Regularidade, Regularidade com ressalvas,
+Irregularidade ou Expedição de determinações, recomendações e/ou medidas saneadoras.
 Tese de julgamento: Enumere a(s) tese(s) jurídica(s) firmada(s) no julgamento (ratio decidendi), de forma concisa e objetiva, seguindo esta formatação: "1. [Tese 1]. 2. [Tese 2]. 3. [Tese 3]..." Cada tese deve ser redigida como uma única frase, iniciando com letra maiúscula e terminando com ponto final
 
 EXEMPLO DE EMENTA BEM FORMATADA:
@@ -202,7 +203,8 @@ Para CADA achado das diretrizes, na seção 5 (analise_completa):
      verifico que a equipe técnica apontou..." ou similar. Detalhar
      datas, metragens e valores exatos. Concluir com "Diante do
      exposto, voto por (...)" usando LITERALMENTE o "resultado" das
-     DIRETRIZES (irregular / regular_com_ressalvas / regular).
+     DIRETRIZES (irregular / regular_com_ressalvas / regular /
+     expedicao_medidas_saneadoras).
 
      PROFUNDIDADE OBRIGATÓRIA da Análise do Relator (mínimo 4-6
      parágrafos densos por achado — este é o coração da minuta):
@@ -235,9 +237,14 @@ ESTRUTURA DAS DIRETRIZES (interpretação obrigatória):
   • Se "irregular" → "voto pela IRREGULARIDADE" (DEFINITIVO)
   • Se "regular_com_ressalvas" → "voto pela REGULARIDADE COM RESSALVAS" (DEFINITIVO)
   • Se "regular" → "voto pela REGULARIDADE" (DEFINITIVO)
-- Se qualquer resultado estiver null, se achado.confirmado=false ou se
-  qualquer decisão estiver com confirmado=false, NÃO redija a minuta: essa
-  situação deve ser bloqueada pelo servidor e jamais completada por inferência.
+  • Se "expedicao_medidas_saneadoras" → "voto pela EXPEDIÇÃO DE DETERMINAÇÕES,
+    RECOMENDAÇÕES E/OU MEDIDAS SANEADORAS" (DEFINITIVO). Nesse caso, NÃO declare
+    regularidade ou irregularidade e NÃO aprove, reprove ou rejeite as contas.
+- Os campos de resultado, multa, débito e medida recebidos neste contexto já
+  foram revisados e salvos pela Conselheira e são vinculantes. Não exija nem
+  mencione qualquer caixa ou campo adicional de confirmação.
+- Se qualquer resultado estiver null, NÃO redija a minuta: essa situação deve
+  ser bloqueada pelo servidor e jamais completada por inferência.
 - diretrizes.achados[i].multa.aplicar=true → aplicar multa com o valor
   em diretrizes.achados[i].multa.valor (texto livre da Conselheira) e
   fundamento no art. 73 da Lei 12.600/2004 (escolha o inciso aderente).
@@ -245,7 +252,10 @@ ESTRUTURA DAS DIRETRIZES (interpretação obrigatória):
   em diretrizes.achados[i].debito.valor.
 - diretrizes.achados[i].medida.aplicar=true → incluir o texto literal de
   diretrizes.achados[i].medida.texto como recomendação/determinação/ciência.
-- Se aplicar/imputar=false e confirmado=true, NÃO inclua a sanção ou medida.
+- Se aplicar/imputar=false, NÃO inclua a sanção ou medida, mesmo que exista
+  texto residual em qualquer outro campo.
+- Para "expedicao_medidas_saneadoras", transcreva a medida preenchida sem
+  inventar responsável, multa, débito ou julgamento das contas.
 - É PROIBIDO criar, aumentar, reduzir ou sugerir sanção dentro da minuta.
 - diretrizes.achados[i].sugestao_ia, se presente, é uma proposta antiga
   da própria IA — IGNORAR para a minuta final, ela já foi avaliada pela

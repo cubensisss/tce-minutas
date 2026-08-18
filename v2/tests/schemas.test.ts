@@ -69,6 +69,10 @@ describe('DiretrizesSchema', () => {
     expect(canonical.achados[0]!.multa.valor).toBe('');
     expect(canonical.achados[0]!.debito.valor).toBe('');
     expect(canonical.achados[0]!.medida.texto).toBe('');
+    expect(canonical.achados[0]!.confirmado).toBe(true);
+    expect(canonical.achados[0]!.multa.confirmado).toBe(true);
+    expect(canonical.achados[0]!.debito.confirmado).toBe(true);
+    expect(canonical.achados[0]!.medida.confirmado).toBe(true);
     expect(canonical.achados[0]!.sugestao_ia?.multa).toBe('Multa sugerida pela IA');
     expect(diretrizesForGeneration(diretrizes).achados[0]!.sugestao_ia).toBeNull();
   });
@@ -85,6 +89,17 @@ describe('DiretrizesSchema', () => {
       achados: [{ achado_numero: '1', resultado: 'procedente' }],
     });
     expect(bad.success).toBe(false);
+  });
+
+  it('aceita expedição de determinações, recomendações e medidas saneadoras', () => {
+    const ok = DiretrizesSchema.safeParse({
+      achados: [{
+        achado_numero: '1',
+        resultado: 'expedicao_medidas_saneadoras',
+        medida: { aplicar: true, texto: 'Determinar a apresentação de plano de ação.' },
+      }],
+    });
+    expect(ok.success).toBe(true);
   });
 
   it('mantém decisões de sanção pendentes por padrão', () => {
@@ -106,6 +121,11 @@ describe('DiretrizesSchema', () => {
         citacao: 'art. 73 da Lei Estadual nº 12.600/2004',
         link: 'https://www.tcepe.tc.br/internet/docs/tce/Lei-Organica-atualizada_2015.pdf',
       }],
+    }).success).toBe(true);
+    expect(PropostaJulgamentoIaSchema.safeParse({
+      resultado: 'expedicao_medidas_saneadoras',
+      medida: 'Recomendar o aperfeiçoamento dos controles internos.',
+      fontes: [{ tipo: 'legislacao', citacao: 'Lei Estadual nº 12.600/2004' }],
     }).success).toBe(true);
   });
 });

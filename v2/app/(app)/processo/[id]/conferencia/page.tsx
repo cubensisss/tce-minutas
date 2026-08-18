@@ -22,7 +22,7 @@ const GROUPS: Array<{ id: ConferenceGroup; label: string; icon: string }> = [
   { id: 'precedentes', label: 'Precedentes', icon: 'account_balance' },
   { id: 'diretrizes', label: 'Diretrizes', icon: 'rule' },
   { id: 'dispositivo', label: 'Dispositivo', icon: 'gavel' },
-  { id: 'pendencias', label: 'Pendências', icon: 'warning' },
+  { id: 'pendencias', label: 'Avisos', icon: 'warning' },
 ];
 
 export default function ConferenciaPage({ params }: Props) {
@@ -68,9 +68,7 @@ export default function ConferenciaPage({ params }: Props) {
       const json = await response.json();
       if (!response.ok) {
         if (json.report && data) setData({ ...data, report: json.report, approved: false, approved_at: null });
-        throw new Error(json.error === 'conferencia_incompleta'
-          ? 'Ainda existem bloqueadores que precisam ser resolvidos.'
-          : json.error ?? 'Não foi possível salvar a conferência.');
+        throw new Error(json.error ?? 'Não foi possível salvar a conferência.');
       }
       if (body.action === 'confirm_references') {
         setData((current) => current ? {
@@ -127,7 +125,9 @@ export default function ConferenciaPage({ params }: Props) {
         <div>
           <p className="eyebrow">Etapa final</p>
           <h1 className="page-title">Conferência</h1>
-          <p className="page-subtitle">Valide fontes e coerência antes de liberar o documento oficial.</p>
+          <p className="page-subtitle">
+            Consulte os avisos automáticos se desejar. Eles não impedem a aprovação nem o DOCX.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href={`/processo/${id}/revisao`} className="btn-ghost">Voltar à revisão</Link>
@@ -139,11 +139,11 @@ export default function ConferenciaPage({ params }: Props) {
           ) : (
             <button
               className="btn-primary"
-              disabled={!data.report.ready || saving}
+              disabled={saving}
               onClick={() => void post({ action: 'approve' })}
             >
               <span className="material-symbols-outlined text-base">verified</span>
-              Aprovar minuta
+              Aprovar e liberar DOCX
             </button>
           )}
         </div>
@@ -152,18 +152,20 @@ export default function ConferenciaPage({ params }: Props) {
       <section className={`card ${data.approved ? 'notice-success' : data.report.ready ? 'notice-success' : 'notice-warning'}`}>
         <div className="flex items-start gap-3">
           <span className="material-symbols-outlined text-2xl">
-            {data.approved ? 'verified' : data.report.ready ? 'task_alt' : 'lock'}
+            {data.approved ? 'verified' : data.report.ready ? 'task_alt' : 'warning'}
           </span>
           <div>
             <h2 className="font-semibold">
               {data.approved ? 'Minuta aprovada e DOCX liberado' : data.report.ready
-                ? 'Todas as verificações foram concluídas'
-                : `${data.report.blockers} bloqueador(es) impedem a aprovação`}
+                ? 'Nenhum aviso automático foi encontrado'
+                : `${data.report.blockers} aviso(s) automático(s) para revisão opcional`}
             </h2>
             <p className="text-sm mt-1">
               {data.approved && data.approved_at
                 ? `Aprovação registrada em ${new Date(data.approved_at).toLocaleString('pt-BR')}.`
-                : 'O documento só pode ser baixado após a aprovação humana desta versão.'}
+                : data.report.ready
+                  ? 'Você pode aprovar esta versão e baixar o documento.'
+                  : 'Esses avisos não impedem que você aprove esta versão e baixe o documento.'}
             </p>
           </div>
         </div>
@@ -185,8 +187,8 @@ export default function ConferenciaPage({ params }: Props) {
                 <div className="divide-y divide-outline-variant">
                   {checks.map((check) => (
                     <div className="py-3 first:pt-0 last:pb-0 flex gap-3" key={check.id}>
-                      <span className={`material-symbols-outlined mt-0.5 ${check.ok ? 'text-success' : 'text-error'}`}>
-                        {check.ok ? 'check_circle' : 'cancel'}
+                      <span className={`material-symbols-outlined mt-0.5 ${check.ok ? 'text-success' : 'text-warning'}`}>
+                        {check.ok ? 'check_circle' : 'warning'}
                       </span>
                       <div>
                         <h3 className="text-sm font-semibold">{check.label}</h3>
@@ -205,7 +207,7 @@ export default function ConferenciaPage({ params }: Props) {
             <p className="eyebrow">Painel lateral</p>
             <h2 className="font-display text-xl text-primary">Fontes</h2>
             <p className="text-sm text-on-surface-variant mt-1">
-              Confira o trecho e seu localizador antes de confirmar.
+              A conferência das referências é opcional e não bloqueia o documento.
             </p>
           </div>
 
@@ -214,7 +216,7 @@ export default function ConferenciaPage({ params }: Props) {
           <button
             className="btn-primary w-full"
             disabled={saving || allReferencesConfirmed ||
-              confirmableEvidence.length === 0 || confirmableMinuteRefs.length === 0}
+              (confirmableEvidence.length === 0 && confirmableMinuteRefs.length === 0)}
             onClick={() => void post({
               action: 'confirm_references',
               evidence_ids: confirmableEvidence,
@@ -225,7 +227,7 @@ export default function ConferenciaPage({ params }: Props) {
             {allReferencesConfirmed ? 'Referências confirmadas' : 'Confirmar referências válidas'}
           </button>
           <p className="text-xs text-on-surface-variant">
-            Referências inválidas não são confirmadas automaticamente e permanecem como bloqueadoras.
+            Referências sem correspondência automática continuam sinalizadas apenas para sua informação.
           </p>
         </aside>
       </div>

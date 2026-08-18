@@ -57,24 +57,40 @@ function state() {
 }
 
 describe('conferência verificável', () => {
-  it('valida a confirmacao antes de remover a proposta do contexto da IA', () => {
+  it('normaliza os campos salvos antes de remover a proposta do contexto da IA', () => {
     const { diretrizes } = state();
+    diretrizes.achados[0]!.confirmado = false;
+    diretrizes.achados[0]!.multa.confirmado = false;
     const confirmed = canonicalizeDiretrizes(diretrizes);
 
     expect(directiveBlockers(confirmed)).toEqual([]);
+    expect(confirmed.achados[0]!.confirmado).toBe(true);
+    expect(confirmed.achados[0]!.multa.confirmado).toBe(true);
     expect(diretrizesForGeneration(confirmed).achados[0]!.sugestao_ia).toBeNull();
   });
 
-  it('bloqueia qualquer decisão de sanção não confirmada, inclusive não aplicar', () => {
-    const { diretrizes } = state();
-    diretrizes.achados[0]!.multa.confirmado = false;
-    expect(directiveBlockers(diretrizes)).toContain('Achado 1.1: decisão sobre multa pendente');
-  });
-
-  it('bloqueia o julgamento enquanto a concordância humana não for marcada', () => {
+  it('não exige confirmações legadas quando os campos específicos estão preenchidos', () => {
     const { diretrizes } = state();
     diretrizes.achados[0]!.confirmado = false;
-    expect(directiveBlockers(diretrizes)).toContain('Achado 1.1: julgamento não confirmado');
+    diretrizes.achados[0]!.multa.confirmado = false;
+    diretrizes.achados[0]!.debito.confirmado = false;
+    diretrizes.achados[0]!.medida.confirmado = false;
+    expect(directiveBlockers(diretrizes)).toEqual([]);
+  });
+
+  it('exige uma medida concreta para o resultado exclusivamente saneador', () => {
+    const { diretrizes } = state();
+    diretrizes.achados[0]!.resultado = 'expedicao_medidas_saneadoras';
+    expect(directiveBlockers(diretrizes)).toContain(
+      'Achado 1.1: descreva ao menos uma determinação, recomendação ou medida saneadora',
+    );
+
+    diretrizes.achados[0]!.medida = {
+      confirmado: false,
+      aplicar: true,
+      texto: 'Determinar ao Município a apresentação de plano de ação em 60 dias.',
+    };
+    expect(directiveBlockers(diretrizes)).toEqual([]);
   });
 
   it('libera somente quando fatos, fontes, diretrizes e dispositivo estão coerentes', () => {
@@ -103,6 +119,32 @@ describe('conferência verificável', () => {
     expect(report.ready).toBe(false);
     expect(report.checks.find((check) => check.id === 'contexto_atual')?.ok).toBe(false);
     expect(report.checks.find((check) => check.id === 'resultado_1.1')?.ok).toBe(false);
+  });
+
+  it('confere o resultado saneador sem aprovar ou reprovar as contas', () => {
+    const { resumo, diretrizes, minuta } = state();
+    diretrizes.achados[0]!.resultado = 'expedicao_medidas_saneadoras';
+    diretrizes.achados[0]!.medida = {
+      confirmado: false,
+      aplicar: true,
+      texto: 'Determinar ao Município a apresentação de plano de ação em 60 dias.',
+    };
+    minuta.decisao_voto = [
+      'Voto pela EXPEDIÇÃO DE DETERMINAÇÕES, RECOMENDAÇÕES E/OU MEDIDAS SANEADORAS.',
+      diretrizes.achados[0]!.medida.texto,
+      'Decisão fundamentada com providências de monitoramento.',
+    ].join(' ');
+    const hash = generationContextHash(resumo, diretrizes);
+    const report = buildConferenceReport({
+      resumo, diretrizes, minuta,
+      resumoConfirmedAt: '2026-01-01', diretrizesConfirmedAt: '2026-01-01',
+      minutaStatus: 'draft', storedContextHash: hash, currentContextHash: hash,
+      jurisprudenceResearchCompleted: true,
+    });
+
+    expect(report.checks.find((check) => check.id === 'resultado_1.1')?.ok).toBe(true);
+    expect(report.checks.find((check) => check.id === 'sem_julgamento_de_contas')?.ok).toBe(true);
+    expect(report.ready).toBe(true);
   });
 
   it('bloqueia minuta que aplica multa depois de ela ser desmarcada', () => {
@@ -166,6 +208,10 @@ describe('conferência verificável', () => {
     expect(isApprovedForDownload({
       status: 'approved', approvedHash, minuta,
       storedContextHash: contextHash, currentContextHash: contextHash,
+    })).toBe(true);
+    expect(isApprovedForDownload({
+      status: 'approved', approvedHash, minuta,
+      storedContextHash: 'contexto-da-geracao', currentContextHash: 'contexto-atual-diferente',
     })).toBe(true);
     minuta.relatorio += ' Alteração posterior.';
     expect(isApprovedForDownload({
